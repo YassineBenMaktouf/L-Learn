@@ -15,6 +15,9 @@ import random
 from bson.json_util import dumps
 from flask_cors import CORS
 import requests
+import time
+from requests.exceptions import HTTPError, Timeout, RequestException
+import logging
 
 
 load_dotenv()
@@ -24,8 +27,9 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 app.secret_key=os.getenv("Secret_key")
 app.wsgi_app = DebuggedApplication(app.wsgi_app, True)  
 url=os.getenv("DATABASE_URL")
-print(url)
 client = MongoClient(url)
+hf_api_key=os.getenv('HUGGINGFACE_API_KEY')
+HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
 
 
 db = client.get_database("Languify")
@@ -234,34 +238,6 @@ def test():
 def chat():
     return render_template('chat.html')
 
-#generate image 
-@app.route('/generate_image')
-def generate_image():
-    # Example random objects, replace or extend this list as needed
-    random_objects = ["apple", "chair", "tree", "cat", "car", "house", "phone", "laptop", "shoe", "book"]
-    object_name = random.choice(random_objects)  # Select a random object
-    prompt = f"a photo of a {object_name}"  # Construct a prompt for DALL-E
-
-    # DALL-E 2 API call to generate an image
-    response = openai.Image.create(
-        model="dall-e-2",
-        prompt=prompt,
-        size="256x256",
-        quality="standard",
-        n=1
-    )
-    response_chat = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
-        messages=[
-            {"role": "system", "content": "give me 3 similar names that can't describe the same given word, DO NOT INCLUDE ANY OTHER TEXT I JUST WANT WORDS the format of the content should be like this {'word1','word2','word3'}"},
-            {"role": "user", "content": object_name}
-        ]
-    )
-
-    image_url = response.data[0].url  # Extract the URL of the generated image
-    options = response_chat.choices[0].message['content']
-    # Return the image URL and object name
-    return jsonify({'image_url': image_url, 'object_name': object_name, 'options': options})
 
 #generate sentence
 from flask import session
@@ -472,6 +448,64 @@ def ask():
     else:
         return jsonify({'error': 'Failed to fetch response from OpenAI'}), response.status_code
 
+#generate image with words
+def query_image_generation(prompt, retry_limit=3, timeout=10):
+    hf_headers = {"Authorization": f"Bearer {hf_api_key}"}
+    data = {"inputs": prompt}
+    for attempt in range(retry_limit):
+        try:
+            response = requests.post(HUGGINGFACE_API_URL, headers=hf_headers, json=data, timeout=timeout)
+            response.raise_for_status()
+            return response.content
+        except Timeout:
+            logging.warning('The request timed out, attempting retry...')
+        except HTTPError as http_err:
+            if response.status_code == 503 and attempt < retry_limit - 1:
+                logging.warning('Service unavailable, retrying...')
+            else:
+                logging.error(f'HTTP error occurred: {http_err}')
+                break
+        except RequestException as req_err:
+            logging.error(f'Request error occurred: {req_err}')
+            break
+        time.sleep((2 ** attempt) * 3)
+    return None
+
+@app.route('/generate_image_with_random_word')
+def generate_image_with_random_word():
+    try:
+        # Call GPT-3 Turbo model to generate random words
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Generate 4 random words(easy).DO NOT INCLUDE ANY ADDITIONAL CARACTERS OR SYMBOLS.DO NOT ENUMERATE THE WORDS.MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'"}
+            ]
+        )
+
+        # Extract the generated words from the response
+        words = response.choices[0].message['content'].strip().split("\n")
+        # Select one random word
+        object_name = random.choice(words)
+        # Construct a prompt for image generation
+        prompt = f"Generate an image of {object_name}"
+        # Query image generation from Stable Diffusion API
+        image_data = query_image_generation(prompt)
+        
+        if image_data:
+            # Save or process the image data as required
+            # For example, you can save it to a file
+            with open('./static/img/generated_image.png', 'wb') as f:
+                f.write(image_data)
+
+            # Return a success message or image URL
+            return jsonify({'message':'Image generated successfully','words': words,'correct_word' : object_name })
+
+        else:
+            return jsonify({'message': 'Failed to generate image'})
+
+    except Exception as e:
+        logging.error(f'Error occurred: {e}')
+        return jsonify({'message': 'Failed to generate image. Internal server error.'})
 
 if __name__ == '__main__':
     app.run(debug=True)
