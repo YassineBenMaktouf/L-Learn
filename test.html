@@ -1,0 +1,27 @@
+{% extends "mainfront/base.html" %}
+
+{% block head_extra %}
+    <link href="{{ url_for('static', filename='css/ourcode.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="card" style="top: 55px; margin: 10px auto; width: 30rem;   justify-content: center; margin-top:10px ; ">
+    <div class="card-body" >
+      <div style="justify-content: center;" class="d-flex align-items-center">
+        <div class="subheader">Insight on wanted Topic</div>
+      </div>
+      <div style="justify-content: center;" class="h1 d-flex align-items-center">Enter a Desired Topic</div>
+      <div id="nature" class="d-flex mb-2">
+        </div>
+      </div>
+      <div class="mb-3 d-flex flex-column align-items-center">
+        <input style="width: 80%; font-size: 1.2rem; padding: 0.5rem;" type="email" name="email" id="email" class="form-control mt-4" placeholder="your@email.com" autocomplete="off">
+    </div>
+        
+    </div>
+  
+</div>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/ourcode.js') }}"></script>
+{% endblock %}

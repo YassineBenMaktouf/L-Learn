@@ -1,0 +1,51 @@
+
+{% extends "mainfront/base.html" %}
+
+{% block content %}
+
+<!--  AD  -->
+<div class="row justify-content-center mt-3 "> <!-- Center the card horizontally -->
+  <div class="col-lg-6 col-md-8 col-sm-10"> <!-- Adjust the width of the card -->
+      <div class="card mb-2">
+          <div class="card-body">
+<div>
+  <b><p style="text-align: center; font-family: 'Orbitron', sans-serif; color: #ffffff;">Listen carfully and write down what you hear  !</p></b>
+</div>
+<div class="d-flex align-items-center justify-content-center mb-3" >
+  <img src="static/img/audio.png" class="img-fluid rounded" alt="Your Image" style="max-width: 140px;">
+  
+</div>
+<div class="col">
+
+  <div class="d-flex align-items-center justify-content-center" style="height: 50%; ">
+     
+      <audio id="customAudio" controls style="display: none;">
+        <source src="static/audio/ElevenLabs_2023-08-14T15_24_43.000Z_Wayne - cool, calm, deep kinda chad_eIFf2Rw2rvJDcNaglWK4.mp3 - Raccourci.lnk" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+   
+    </div>
+    
+<div class="d-flex align-items-center justify-content-center mb-3" style="height: 100%;">
+  <div class="row"> 
+    <div class="col">
+      <a href="#" class="btn btn-primary btn-lg btn-block mr-4 " onclick="playAudio()">Play word</a>
+
+      <a href="#" class="btn btn-primary btn-lg btn-block ml-4" onclick="playSlowAudio()">Slow play</a>
+    </div>
+  </div>
+</div>
+<div class="editable-container" style="position: relative; width: 80%; margin: auto;">
+    <div id="styledText" class="styled-text" style="white-space: pre-wrap; overflow-wrap: break-word;"></div>
+    <div contenteditable="true" oninput="styleText()" class="editable-text" style="color: transparent;  caret-color: black; background-color: transparent;"></div>
+</div>
+</div>
+</div>
+</div>
+<!--  end AD   -->   
+{% endblock %}
+
+{% block scripts %}
+
+<script src="{{ url_for('static', filename='js/ourcode.js') }}" defer></script>
+{% endblock %}

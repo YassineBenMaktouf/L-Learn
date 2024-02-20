@@ -1,0 +1,38 @@
+{% extends "mainfront/base.html" %}
+
+{% block head_extra %}
+    <link href="{{ url_for('static', filename='css/ourcode.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-3">
+    <div class="col-lg-6 col-md-8 col-sm-10">
+        <div class="card mb-2">
+            <div class="card-body" style="height: 400px;">
+                <div class="page">
+                    <div class="container py-5">
+                        <div class="row">
+                            <div class="col">
+                                <div id="constructedSentence" class="form-control mb-3" contenteditable="false" style="width: 80%; min-height: 100px; margin: auto; border: 1px solid #ced4da; padding: .375rem .75rem; text-align: center;">
+                                </div>
+                                <div style="text-align: center; margin-top: 20px;">
+                                    <button id="checkSentence" class="btn btn-primary">Check Sentence</button>
+                                    <button id="nextSentence" class="btn btn-secondary" style="display: none;">Next Sentence</button>
+                                    <button id="undoSentence" class="btn btn-danger" style="display: none;">Undo</button> <!-- Undo Button -->
+                                </div>
+                                <div id="wordsContainer" class="form-control mb-3" style="width: 80%; height: auto; margin: auto; border: 1px solid #ced4da; padding: .375rem .75rem; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;">
+                                </div>
+                                <div id="resultContainer" style="text-align: center; margin-top: 20px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+    <script src="{{ url_for('static', filename='js/ourcode.js') }}"></script>
+{% endblock %}

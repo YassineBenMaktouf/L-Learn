@@ -1,0 +1,189 @@
+{% extends "mainfront/base.html" %}
+{% block content %}
+<div class="page-wrapper">
+    <!-- Page header -->
+    <div class="page-header d-print-none">
+      <div class="container-xl">
+        <div class="row g-2 align-items-center mt-6">
+          <!-- Text content column -->
+          <div class="col-md-6">
+              <!-- Page pre-title -->
+              <div class="page-pretitle  mb-2">
+                  Home
+              </div>
+              <h1 id="welcome-message" style="font-size: 50px;">
+                  Welcome 
+              </h1>
+              <p style="font-size: 16px; line-height: 1.6;">
+                  At Languify, we've revolutionized language learning by harnessing the latest advancements in technology and combining them with time-tested educational approaches. Our platform is designed to provide an innovative and immersive learning experience that caters to the individual needs and preferences of each user.
+                  <br><br>
+                  Drawing upon the power of LLM (Large Language Model), our platform goes beyond traditional language learning methods to offer a comprehensive and personalized approach. LLM enables us to create dynamic and adaptive learning paths that adapt to each user's unique learning style, pace, and proficiency level.
+                  <br><br>
+                  Our approach to language learning is built on the principle of immersion, allowing users to learn in context and engage with the language in meaningful ways. By integrating LLM into our platform, we are able to simulate real-world scenarios and provide users with authentic language experiences that are both engaging and effective.
+              </p>
+          </div>
+          <div class="col-md-6" >
+            <div class="row g-2 align-items-center ">
+              <div class="col-sm-6 ">
+                <div class="card " style="margin-left:30px ; height: 160px;">
+                  <div class="card-body ">
+                    <div class="d-flex align-items-center">
+                      <div class="subheader">Level!</div>
+                    </div>
+                    <div class="h1 mb-3" >Your Current Level</div>
+                   
+                      <div id="level" class="level bg-success text-white p-2 " style="margin-left: 60px; justify-content: center; border-radius: 50px;font-family: Arial, sans-serif;font-size: 20px; width: 100px; " >
+                       
+                      </div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6 mt-md-0 mt-4 "  >
+                <div class="card" style="margin-left:30px; ">
+                  <div class="card-body" style="height:115px;">
+                    <div class="d-flex align-items-center">
+                      <div class="subheader">Point History</div>
+
+                    </div>
+                    <div class="h3 mb-3" >Progress Throughout Time</div>
+
+                    <div class="d-flex align-items-baseline">
+                      <canvas id="pointsChart" width="400" height="200"></canvas>
+                    </div>
+                  </div>
+                  <div id="chart-revenue-bg" class="chart-sm"></div>
+                </div>
+              </div>
+              <div class="col">
+                <div class="card" style="margin-left:30px; margin-top:10px ; ">
+                  <div class="card-body" >
+                    <div class="d-flex align-items-center">
+                      <div class="subheader">Insight on current progress</div>
+                    </div>
+                    <div class="h1 mb-3">Progress Made</div>
+                    <div id="nature" class="d-flex mb-2">
+                      <div>You are a</div>
+                      <div class="ms-auto">
+                        
+                      </div>
+                    </div>
+                    <div class="progress progress-sm">
+                        <div id="progress-bar" class="progress-bar bg-primary" style="width: 0%;" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" aria-label="0% Complete">
+                          <span class="visually-hidden">0% Complete</span>
+                        </div>
+                      </div>
+                      
+                  </div>
+                </div>
+              </div>
+              
+                            </div>
+                            <div class="col">
+                              <div class="card" style="margin-left:30px; margin-top:10px;">
+                                <div class="card-body">
+                                  <div class="mb-2" style="margin-left:150px; ">Choose a language to start learning!</div>
+                                    <div class="mb-3 d-flex flex-wrap justify-content-between">
+                                        <div class="language-option">
+                                            <img src="static/img/arabic.png" alt="Arabic Flag" class="flag" data-lang="Arabic" style="width: 50px; height: 40px;">
+                                        </div>
+                                        <div class="language-option">
+                                            <img src="static/img/france.png" alt="French Flag" class="flag" data-lang="French" style="width: 50px; height: 40px;">
+                                        </div>
+                                        <div class="language-option">
+                                            <img src="static/img/united-kingdom.png" alt="English Flag" class="flag" data-lang="English" style="width: 50px; height: 40px;">
+                                        </div>
+                                        <div class="language-option">
+                                            <img src="static/img/germany.png" alt="German Flag" class="flag" data-lang="German" style="width: 50px; height: 40px;">
+                                        </div>
+                                        <div class="language-option">
+                                            <img src="static/img/italy.png" alt="Italian Flag" class="flag" data-lang="Italian" style="width: 50px; height: 40px;">
+                                        </div>
+                                        <div class="language-option">
+                                            <img src="static/img/portugal.png" alt="Portuguese Flag" class="flag" data-lang="Portuguese" style="width: 50px; height: 40px;">
+                                        </div>
+                                        <div class="language-option">
+                                            <img src="static/img/spain.png" alt="Spanish Flag" class="flag" data-lang="Spanish" style="width: 50px; height: 40px;">
+                                        </div>
+                                    </div>
+                                    <input type="hidden" name="selected_language" id="selected_language">
+                                </div>
+                            </div>
+                            
+                            </div>
+      </div>
+      
+      </div>
+      
+    </div>
+
+    <!-- Page body -->
+    <script>
+        // Sample data for the chart
+        const pointsHistoryData = {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], // Sample months
+            datasets: [{
+                label: 'Points Earned',
+                data: [100, 200, 150, 300, 250], // Sample points earned
+                backgroundColor: 'rgba(54, 162, 235, 0.2)', // Background color
+                borderColor: 'rgba(54, 162, 235, 1)', // Border color
+                borderWidth: 1
+            }]
+        };
+
+        // Create the chart
+        const ctx = document.getElementById('pointsChart').getContext('2d');
+        const pointsChart = new Chart(ctx, {
+            type: 'line',
+            data: pointsHistoryData,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+
+<script>
+    // @formatter:off
+    document.addEventListener("DOMContentLoaded", function () {
+        window.ApexCharts && (new ApexCharts(document.getElementById('sparkline-comments'), {
+            chart: {
+                type: "radialBar",
+                fontFamily: 'inherit',
+                height: 40,
+                width: 40,
+                animations: {
+                    enabled: false
+                },
+                sparkline: {
+                    enabled: true
+                },
+            },
+            tooltip: {
+                enabled: false,
+            },
+            plotOptions: {
+                radialBar: {
+                    hollow: {
+                        margin: 0,
+                        size: '75%'
+                    },
+                    track: {
+                        margin: 0
+                    },
+                    dataLabels: {
+                        show: false
+                    }
+                }
+            },
+            colors: [tabler.getColor("yellow")],
+            series: [56],
+        })).render();
+    });
+    // @formatter:on
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+{% endblock %}

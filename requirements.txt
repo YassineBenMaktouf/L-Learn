@@ -1,0 +1,7 @@
+flask 
+python-dotenv
+psycopg2-binary
+uuid
+PyJWT
+pymongo
+openai==0.28.0
