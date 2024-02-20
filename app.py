@@ -1,4 +1,4 @@
-from datetime import datetime
+
 from flask import Flask,jsonify,render_template,request,flash,redirect,make_response,url_for,session,send_file
 from pymongo import MongoClient
 import os 
@@ -127,7 +127,7 @@ def signup():
     # Check if the user already exists
     existing_user = User_collection.find_one({'email': email})
     if existing_user:
-        flash(f'User already exists', 'failure')
+        flash('User already exists', 'failure')
         return redirect('/sign_up')
     
     new_user = User(username, email, password,mother_language)
@@ -161,7 +161,7 @@ def signin():
 
     response.set_cookie('token', token)
 
-    flash(f'Welcome back!', 'success')
+    flash('Welcome back!', 'success')
     return response
 
 @app.route('/logout')
@@ -217,7 +217,6 @@ def sign_up():
     return render_template('sign-up.html')
 @app.route('/image')
 def image():
-
     return render_template('image.html')
 @app.route('/words')
 def words():
@@ -240,7 +239,7 @@ def chat():
 
 
 #generate sentence
-from flask import session
+
 
 @app.route('/generate_sentence')
 def generate_sentence():
