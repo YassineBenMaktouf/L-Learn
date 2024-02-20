@@ -478,7 +478,7 @@ def generate_image_with_random_word():
         response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": "Generate 4 random words(easy).DO NOT INCLUDE ANY ADDITIONAL CARACTERS OR SYMBOLS.DO NOT ENUMERATE THE WORDS.MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'"}
+                {"role": "system", "content": "Generate 4 random words that can be represented by an image.DO NOT INCLUDE ANY ADDITIONAL CARACTERS OR SYMBOLS.DO NOT ENUMERATE THE WORDS.MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'"}
             ]
         )
 
@@ -490,7 +490,7 @@ def generate_image_with_random_word():
         prompt = f"Generate an image of {object_name}"
         # Query image generation from Stable Diffusion API
         image_data = query_image_generation(prompt)
-        
+
         if image_data:
             # Save or process the image data as required
             # For example, you can save it to a file
