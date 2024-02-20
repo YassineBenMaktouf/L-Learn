@@ -20,6 +20,9 @@
                                 <div>
                                     <div id="feedback" class="mt-3 d-flex align-items-center justify-content-center" style="text-align: center;"></div>
                                 </div>
+                                <div class="mt-3 d-flex justify-content-center">
+                                    <button id="nextImage" class="btn btn-secondary" style="display: block;" onclick="nextImage()">Next Image</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -29,6 +32,8 @@
     </div>
 </div>
 <script>
+// Function to generate image with random word
+function generateImageWithRandomWord() {
     fetch('/generate_image_with_random_word')
         .then(response => {
             if (!response.ok) {
@@ -39,55 +44,18 @@
         .then(data => {
             console.log(data); // Log the response data
             if (data && data.message === 'Image generated successfully') {
-                console.log('Received words:', data.words)
-                console.log('el kelma',data.object_name)
+                // Pass the words and the correct word to updateButtons
+                updateButtons(data.words, data.correct_word); // Adjusted to include correct_word
                 
-                if (data.words && data.words.length >= 4) {
-                    // Update the button texts with the generated words
-                    document.getElementById('word1').innerText = data.words[0];
-                    document.getElementById('word2').innerText = data.words[1];
-                    document.getElementById('word3').innerText = data.words[2];
-                    document.getElementById('word4').innerText = data.words[3];
-                } else {
-                    console.error('Words data is missing or insufficient');
-                }
-                
-            
-                // Create a new image element
                 const img = document.createElement('img');
-                img.src = './static/img/generated_image.png';
+                // Append a unique timestamp to bypass cache
+                img.src = './static/img/generated_image.png?' + new Date().getTime();
                 img.classList.add('img-fluid', 'w-100', 'rounded');
-                
-                // Append the image element to the image_div
+                document.getElementById('image_div').innerHTML = ''; // Clear existing images
                 document.getElementById('image_div').appendChild(img);
-                // Select all the buttons
-    const buttons = document.querySelectorAll('.btn');
-    console.log(buttons) 
 
-    // Add click event listeners to each button
-    buttons.forEach(button => {
-        button.addEventListener('click', () => {
-            // Get the text of the clicked button
-            const clickedWord = button.innerText;
-
-            
-            const correctWord = data.correct_word;
-            
-                        if (clickedWord === correctWord) {
-                            
-                            // Display correct feedback
-                            document.getElementById('feedback').innerText = 'Correct!';
-                            document.getElementById('feedback').classList.add('text-success');
-                            document.getElementById('feedback').classList.remove('text-danger');
-                        } else {
-                            console.log('Incorrect!');
-                            // Display incorrect feedback
-                            document.getElementById('feedback').innerText = 'Incorrect!';
-                            document.getElementById('feedback').classList.add('text-danger');
-                            document.getElementById('feedback').classList.remove('text-success');
-                        }
-                    } 
-                )})
+                // Show the Next Image button
+                document.getElementById('nextImage').style.display = 'block';
             } else {
                 console.error('Failed to generate image');
                 document.getElementById('feedback').innerText = 'Failed to generate image.';
@@ -98,6 +66,63 @@
         .catch(error => {
             console.error('Error occurred during fetch:', error);
         });
+}
+
+// Adjusted updateButtons to include correct_word parameter
+function updateButtons(words, correctWord) {
+    const buttonContainer = document.querySelector('.mt-4.mb-4.d-flex');
+    buttonContainer.innerHTML = ''; // Clear existing buttons to avoid duplicating event listeners
+
+    if (words && words.length >= 4) {
+        words.forEach((word) => {
+            const button = document.createElement('button');
+            button.innerText = word;
+            button.classList.add('btn', 'btn-primary', 'btn-block', 'mr-2');
+            button.style.margin = '3px';
+            
+            button.addEventListener('click', () => checkAnswer(word, correctWord)); // Use the actual correct word for comparison
+            
+            buttonContainer.appendChild(button);
+        });
+    } else {
+        console.error('Words data is missing or insufficient');
+    }
+}
+
+// Check if the selected word is correct
+function checkAnswer(selectedWord, correctWord) {
+    if (selectedWord === correctWord) {
+        document.getElementById('feedback').innerText = 'Correct!';
+        document.getElementById('feedback').classList.add('text-success');
+        document.getElementById('feedback').classList.remove('text-danger');
+    } else {
+        document.getElementById('feedback').innerText = 'Incorrect!';
+        document.getElementById('feedback').classList.add('text-danger');
+        document.getElementById('feedback').classList.remove('text-success');
+    }
+}
+
+// Function to load the next image
+function nextImage() {
+    // Hide the Next Image button immediately when clicked
+    document.getElementById('nextImage').style.display = 'none';
+
+    // Clear current image and feedback
+    document.getElementById('image_div').innerHTML = '';
+    document.getElementById('feedback').innerText = '';
+    document.getElementById('feedback').classList.remove('text-success', 'text-danger');
+
+    // Indicate loading for the word buttons, not the Next Image button
+    const buttons = document.querySelectorAll('.btn.btn-primary'); // Ensure we only target the word buttons
+    buttons.forEach(button => button.innerText = 'Loading..');
+
+    // Call the function to generate a new image with random words
+    generateImageWithRandomWord();
+}
+
+// Initial call to load the first image
+document.addEventListener('DOMContentLoaded', generateImageWithRandomWord);
+
 </script>
 
 {% endblock %}
