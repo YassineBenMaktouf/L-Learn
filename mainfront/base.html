@@ -19,7 +19,7 @@
     <link href="{{ url_for('static', filename='css/tabler-payments.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/tabler-vendors.min.css') }}" rel="stylesheet">
     <link href="{{ url_for('static', filename='css/demo.min.css') }}" rel="stylesheet">
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" integrity="sha512-xr2os72kRdzeMOWurA20IaPBTkHtcrZ9N/mDhyLQFv9sYsI7hGWfEY0oDgdz4wI9knxJLOaq6YZVfvbD6lW2rg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
       @import url('https://rsms.me/inter/inter.css');
       :root {
@@ -77,7 +77,7 @@
               </a>
               <div class="dropdown-menu dropdown-menu-end dropdown-menu-arrow">
                 <a href="#" class="dropdown-item">Status</a>
-                <a href="#" class="dropdown-item">Profile</a>
+                <a href="/profile" class="dropdown-item">Profile</a>
                 <a href="#" class="dropdown-item">Feedback</a>
                 <div class="dropdown-divider"></div>
                 <a href="#" class="dropdown-item">Settings</a>
@@ -95,7 +95,7 @@
             <div class="container-xl">
               <ul class="navbar-nav evenly-spaced row gx-8">
                 <li class="nav-item active col">
-                  <a class="nav-link" href="/home" >
+                  <a class="nav-link" href="/" >
                     <span class="nav-link-icon d-md-none d-lg-inline-block"><!-- Download SVG icon from http://tabler-icons.io/i/home -->
                       <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg>
                     </span>
@@ -133,7 +133,7 @@
                   </a>
                 </li>
                 <li class="nav-item active col">
-                  <a class="nav-link" href="/audicite" >
+                  <a class="nav-link" href="/audio_words" >
                     <span class="nav-link-icon d-md-none d-lg-inline-block"><!-- Download SVG icon from http://tabler-icons.io/i/home -->
                       <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
@@ -148,17 +148,27 @@
                   </a>
                 </li>
                 <li class="nav-item active col">
-                  <a class="nav-link" href="./" >
+                  <a class="nav-link" href="/paragraph_tts" >
                     <span class="nav-link-icon d-md-none d-lg-inline-block"><!-- Download SVG icon from http://tabler-icons.io/i/home -->
                       <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg>
                     </span>
                     <span class="nav-link-title">
-                      Home
+                      Write Down
                     </span>
                   </a>
                 </li>
+				<li class="nav-item active col">
+					<a class="nav-link" href="/test" >
+					  <span class="nav-link-icon d-md-none d-lg-inline-block"><!-- Download SVG icon from http://tabler-icons.io/i/home -->
+						<svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg>
+					  </span>
+					  <span class="nav-link-title">
+						Quiz
+					  </span>
+					</a>
+				  </li>
                 <li class="nav-item active col">
-                  <a class="nav-link" href="./chat" >
+                  <a class="nav-link" href="/chat" >
                     <span class="nav-link-icon d-md-none d-lg-inline-block"><!-- Download SVG icon from http://tabler-icons.io/i/home -->
                       <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /><path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6" /></svg>
                     </span>
@@ -459,6 +469,7 @@
       // @formatter:on
     </script>
     <script src="{{ url_for('static', filename='js/ourcode.js') }}" defer></script>
+	<script src="{{ url_for('static', filename='js/test.js') }}" defer></script>
 	<script src="{{ url_for('static', filename='js/chat.js') }}" defer></script>
     <script>
       // @formatter:on

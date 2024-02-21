@@ -14,14 +14,67 @@
       <div id="nature" class="d-flex mb-2">
         </div>
       </div>
-      <div class="mb-3 d-flex flex-column align-items-center">
-        <input style="width: 80%; font-size: 1.2rem; padding: 0.5rem;" type="email" name="email" id="email" class="form-control mt-4" placeholder="your@email.com" autocomplete="off">
+      <div class="mb-3 d-flex align-items-center">
+        <input style="margin-left: 20px; width: 70%; font-size: 1.2rem; padding: 0.5rem;" type="text" name="topic" id="topic" class="form-control mt-4 me-2" placeholder="Input Your desired topic here" autocomplete="off">
+        <button id="submitBtn" class="btn btn-primary btn-dark mt-4">Submit</button>
     </div>
+   
         
     </div>
-  
+    <div class="container mt-8">
+        <div class="card" id="generatedCode">
+            <div class="card-body">
+                <!-- Content of the card -->
+            </div>
+        </div>
+        <div class="row justify-content-center">
+            <div class="col-6">
+                <button style="visibility: hidden;" id="generateTestBtn" class="btn btn-primary btn-dark mt-4 w-100">Supply me with a test!</button>
+            </div>
+        </div>
+        <div class="row justify-content-center">
+            <div id="questions" class="col-6">
+                <!-- Questions will be inserted here dynamically -->
+            </div>
+            <button id="submitTest" style="visibility: hidden;" type="submit" class="btn btn-primary w-100 mt-4 mb-4">Submit Answer!</button>
+
+        </div>
+        
+    </div>
+
 </div>
+
+<div style="visibility:hidden;" id="result_container" class="container-xl mt-6 mb-4">
+    <div class="row justify-content-center">
+      <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body text-center card position-relative"> <!-- Added text-center class -->
+                <button id="tryBtn" class="btn btn-primary btn-dark mt-4 position-absolute " style="top: 5px; right: 3px; display: none;">Try again?</button>
+                <div class="space-y-4">
+              <div>
+                <h2 class="mb-3">Your Report Card!</h2>
+                <div id="evaluationResult">
+                
+                  <div  style="width: 60%; " class="card mx-auto">
+                    <div   class="card-body text-center">
+                       
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <!-- Other content here if needed -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+  <div style="margin-bottom: 20px;"></div>
 {% endblock %}
 {% block scripts %}
-    <script src="{{ url_for('static', filename='js/ourcode.js') }}"></script>
+<link href="{{ url_for('static', filename='css/test.css') }}" rel="stylesheet">
+
 {% endblock %}

@@ -9,26 +9,26 @@
                   <div class="container py-5">
                       <div class="row">
                           <div class="col">
-                              <h2 class="card-title text-center mb-4">Listen carfully and chose the right word:</h2>
-                              <div id="wordfortts" style="display: none;"></div>
+                              <h2 class="card-title text-center mb-4">Listen carfully and write down what you hear:</h2>
+                              <div id="paragraphForTTS" style="display: none;">this is a test paragraph</div>
                               <div class="mt-4 mb-4 d-flex justify-content-center">
                                   <img src="static/img/audio.png" class="img-fluid w-100 rounded" alt="Img" style="max-width: 140px;">
                               </div>
                               <div  class="mt-4 mb-4 d-flex justify-content-center">
-                                <button class="btn btn-secondary btn-lg btn-block mr-4 " onclick="readAloud('wordfortts','en-US',1)" style="margin: 3px;">🎧</button>
-                                <button class="btn btn-secondary btn-lg btn-block ml-4" onclick="readAloud('wordfortts','en-US',0.5)" style="margin: 3px;">🐢</button>
+                                <button class="btn btn-secondary btn-lg btn-block mr-4 " onclick="readAloud('paragraphForTTS','en-US',1)" style="margin: 3px;">🎧</button>
+                                <button class="btn btn-secondary btn-lg btn-block ml-4" onclick="readAloud('paragraphForTTS','en-US',0.5)" style="margin: 3px;">🐢</button>
                               </div>
                               <div  class="mt-4 mb-4 d-flex justify-content-center">
-                                  <button id="word1fortts" class="btn btn-primary btn-block mr-2" style="margin: 3px;">Loading..</button>
-                                  <button id="word2fortts" class="btn btn-primary btn-block mr-2" style="margin: 3px;">Loading..</button>
-                                  <button id="word3fortts" class="btn btn-primary btn-block mr-2" style="margin: 3px;">Loading..</button>
-                                  <button id="word4fortts" class="btn btn-primary btn-block mr-2" style="margin: 3px;">Loading..</button>
+                                <textarea id="userParagraphInput" class="form-control mt-4" rows="5" placeholder="Type the paragraph you hear here..."></textarea>   
+                              </div>
+                              <div class="mt-4 d-flex justify-content-center">
+                                <button id="checkParagraph" class="btn btn-success">Check Paragraph</button>
                               </div>
                               <div>
                                   <div id="feedback" class="mt-3 d-flex align-items-center justify-content-center" style="text-align: center;"></div>
                               </div>
                               <div class="mt-3 d-flex justify-content-center">
-                                  <button id="nextWord" class="btn btn-secondary" style="display: none;" onclick="nextWord()">Next Word</button>
+                                <button id="nextParagraph" class="btn btn-secondary" style="display: none;" onclick="nextParagraph()">Next Paragraph</button>
                               </div>
                           </div>
                       </div>
@@ -64,7 +64,105 @@ function readAloud(elementId, language = 'es-ES', speed = 1) {
         alert("Your browser doesn't support text-to-speech. Please use a supported browser.");
     }
 }
+let incorrectAttempts = 0;
 
+function generateParagraphForTTS() {
+    incorrectAttempts = 0;
+    document.getElementById('checkParagraph').disabled = true;
+    document.getElementById('userParagraphInput').value = '';
+    updateFeedback('', '');
+
+    fetch('/generate_paragraph_for_tts')
+        .then(response => response.json())
+        .then(data => {
+            if (data.paragraph) {
+                // Storing the paragraph in hidden div's text (as per your setup)
+                document.getElementById('paragraphForTTS').innerText = data.paragraph;
+                // Enable the check button now that we have a paragraph
+                document.getElementById('checkParagraph').disabled = false;
+                // Hide the Next Paragraph button until needed
+                document.getElementById('nextParagraph').style.display = 'none';
+            } else {
+                console.error('Failed to generate paragraph');
+                updateFeedback('Failed to generate paragraph.', 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error occurred during fetch:', error);
+            updateFeedback('Error fetching paragraph.', 'danger');
+        });
+
+    // Assign the checkParagraph function to the Check Paragraph button's click event
+    document.getElementById('checkParagraph').onclick = checkParagraph;
+}
+
+function checkParagraph() {
+    const generatedParagraph = document.getElementById('paragraphForTTS').innerText.toLowerCase();
+    const userParagraph = document.getElementById('userParagraphInput').value.toLowerCase();
+    
+    // Normalize the strings by removing symbols and numbers and then split into arrays of words
+    const normalizedGeneratedWords = generatedParagraph.replace(/[^a-z\s]/g, '').trim().split(/\s+/);
+    const normalizedUserWords = userParagraph.replace(/[^a-z\s]/g, '').trim().split(/\s+/);
+    
+    // Find incorrect and excess words
+    const incorrectWords = normalizedUserWords.filter(word => !normalizedGeneratedWords.includes(word));
+    const excessWords = normalizedUserWords.length > normalizedGeneratedWords.length;
+    const insufficientWords = normalizedUserWords.length < normalizedGeneratedWords.length;
+    
+    if (!excessWords && !insufficientWords && incorrectWords.length === 0) {
+        updateFeedback('Correct!', 'success');
+        document.getElementById('nextParagraph').style.display = 'block';
+        document.getElementById('checkParagraph').disabled = true;
+        updatePoints();
+    } else {
+        let feedbackMessage = '';
+        if (incorrectAttempts < 2) { // Before reaching the 3rd attempt
+            incorrectAttempts += 1; // Increment only for incorrect word attempts
+            feedbackMessage += `Incorrect words count: ${incorrectWords.length}. Attempts left: ${3 - incorrectAttempts}. `;
+        } else {
+            const incorrectWordsString = incorrectWords.join(', ');
+            feedbackMessage += `Incorrect, wrong words: ${incorrectWordsString}. The correct sentence was: "${document.getElementById('paragraphForTTS').innerText}". `;
+            document.getElementById('nextParagraph').style.display = 'block'; // Show next button
+            document.getElementById('checkParagraph').disabled = true; // Disable check button
+        }
+        if (excessWords) {
+            feedbackMessage += `Too many words. `;
+        }
+        if (insufficientWords) {
+            feedbackMessage += `Not enough words. `;
+        }
+        updateFeedback(`${feedbackMessage}Try again.`, 'danger');
+    }
+}
+
+
+function nextParagraph() {
+    generateParagraphForTTS();
+}
+
+function updateFeedback(message, type) {
+    const feedbackElement = document.getElementById('feedback');
+    feedbackElement.innerText = message;
+    feedbackElement.classList.remove('text-success', 'text-danger');
+    if (type) {
+        feedbackElement.classList.add(`text-${type}`);
+    }
+}
+
+// Initial call to load the first paragraph
+document.addEventListener('DOMContentLoaded', function() {
+    generateParagraphForTTS(); // Call the function to generate the first paragraph
+
+    // Add an input event listener to the textarea
+    document.getElementById('userParagraphInput').addEventListener('input', function() {
+        const userInput = this.value;
+        // Remove numbers from the input and update the textarea value
+        this.value = userInput.replace(/\d+/g, '');
+    });
+});
+
+
+/*
 let incorrectAttempts = 0;
 const maxIncorrectAttempts = 2;
 
@@ -154,6 +252,7 @@ function resetButtonsToLoading() {
     });
 }
 document.addEventListener('DOMContentLoaded', generateWordsForTTS);
+*/
 </script> 
 {% endblock %}
 

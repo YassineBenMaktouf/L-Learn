@@ -18,6 +18,8 @@ import requests
 import time
 from requests.exceptions import HTTPError, Timeout, RequestException
 import logging
+from pathlib import Path
+import json
 
 
 load_dotenv()
@@ -156,7 +158,7 @@ def signin():
         return redirect('/sign_in')
     
     token = jwt.encode({'email': email}, app.secret_key, algorithm='HS256')
-    response = make_response(redirect('/home'))
+    response = make_response(redirect('/'))
     response.set_cookie('user_id', str(user.get('user_id')))  # Set user_id as a cookie
 
     response.set_cookie('token', token)
@@ -206,7 +208,7 @@ def update_wanted_language(user_id):
 @app.route('/')
 @auth_middleware
 def index():
-    return render_template('/mainfront/base.html')
+    return render_template('front.html')
 
     
 @app.route('/sign_in')
@@ -221,21 +223,21 @@ def image():
 @app.route('/words')
 def words():
     return render_template('words.html')
-@app.route('/audicite')
-def audicite():
-    return render_template('audio_words.html')
+@app.route('/paragraph_tts')
+def paragraph_tts():
+    return render_template('paragraph_tts.html')
 @app.route('/audio_words')
 def audio_words():
     return render_template('audio_words.html')
-@app.route('/home')
-def home():
-    return render_template('front.html')
 @app.route('/test')
 def test():
     return render_template('test.html')
 @app.route('/chat')
 def chat():
     return render_template('chat.html')
+@app.route('/profile')
+def profile():
+    return render_template('profile.html')
 
 
 #generate sentence
@@ -505,6 +507,143 @@ def generate_image_with_random_word():
     except Exception as e:
         logging.error(f'Error occurred: {e}')
         return jsonify({'message': 'Failed to generate image. Internal server error.'})
+
+@app.route('/generate_words_for_tts')
+def generate_words_for_tts():
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Generate 4 random words that are close in pronunciation but not too much in english.DO NOT INCLUDE ANY ADDITIONAL CARACTERS OR SYMBOLS.DO NOT ENUMERATE THE WORDS.MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'"}
+            ]
+        )
+        # Extract the generated words from the response
+        words = response.choices[0].message['content'].strip().split("\n")
+        # Select one random word
+        correct_word = random.choice(words)
+        return jsonify({'words': words,'correct_word' : correct_word})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+
+    
+@app.route('/generate_paragraph_for_tts')
+def generate_paragraph_for_tts():
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Generate a random sentence suitable for text-to-speech. The sentence should be easy to understand and pronounce for English speakers.DO NOT INCLUDE ANY ADDITIONAL CARACTERS OR SYMBOLS like '.',',','?' ect."}
+            ]
+        )
+        paragraph = response.choices[0].message['content'].strip()
+        return jsonify({'paragraph': paragraph})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+
+#for quiz "test"
+@app.route('/expand_on_topic', methods=['POST'])
+def expand_on_topic():
+    try:
+        prompt = request.json.get('prompt')
+        response = openai.ChatCompletion.create(
+           
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "Expand on a Topic provided by the user ."},
+                {"role": "user", "content": prompt}  # Provide the user's topic as part of the messages
+
+            ]
+        )
+        sentence = response.choices[0].message['content'].strip()
+      
+        return jsonify({'original': sentence})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/generate_multiple_choice_questions', methods=['POST'])
+def generate_multiple_choice_questions():
+    try:
+        topic = request.json.get('topic')
+        # Generate questions based on the topic
+        response = openai.Completion.create(
+            engine="gpt-3.5-turbo-instruct",
+            prompt=f"Generate four multiple-choice questions based on the text: {topic}.",
+            max_tokens=219,  
+            n=1,  
+            stop=None,  
+            temperature=0.7,  
+            top_p=1,  
+            frequency_penalty=0,  
+            presence_penalty=0.6,  
+           
+        )
+        
+        # Extract questions from the response
+        questions = [choice['text'].strip() for choice in response['choices']]
+        
+        # Return the generated questions
+        return jsonify({'questions': questions})
+    
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+def generate_prompt(selected_options):
+    prompt = "Given the provided questions, create a JSON object which enumerates a set of 4 child objects.Each child object has a property named 'question' and a property named 'answer' and a property named 'user_answer'.For each child object assign to the property named 'question' a questions provided and to the property named 'answer' the correct answer to the question to the property named 'answer_user' allovate the answer provided from the user .The resulting JSON object should be in this format: [{'question':'string','answer':'string'}].\n\n"
+    
+    for idx, option in enumerate(selected_options, start=1):
+        question = option['question']
+        selected_option_index = option['selectedOptionIndex']
+        options = option['options']
+        
+        prompt += f"{idx}. {question}\n"
+        for i, opt in enumerate(options):
+            if i == selected_option_index:
+                prompt += f"[{chr(ord('A') + i)}] {opt} (User's Choice)\n"
+            else:
+                prompt += f"[{chr(ord('A') + i)}] {opt}\n"
+        
+    
+    return prompt
+
+@app.route('/submit_test', methods=['POST'])
+def submit_test():
+
+    # Extract data from the request
+    selected_options = request.json.get('selectedOptions', [])
+
+    # Convert selected options data into a format suitable for OpenAI
+    prompt = generate_prompt(selected_options)
+    
+    # Call OpenAI to evaluate the prompt
+    response = openai.Completion.create(
+        engine="gpt-3.5-turbo-instruct",  # Choose the engine you want to use
+        prompt=prompt,
+        max_tokens=220,
+        n=1,  
+        stop=None,  
+        temperature=0.7,  
+        top_p=1,  
+        frequency_penalty=0,  
+        presence_penalty=0.6,  # Adjust the max_tokens parameter as needed
+    )
+    # Process the response from OpenAI
+    if response.choices:
+        # Extract the evaluation result from the response
+        evaluation_result = response.choices[0].text.strip()
+
+        # Process the evaluation result as needed
+        # For example, update user points based on the evaluation
+        print('________________________________________________')
+        print(evaluation_result) 
+        
+        # Convert the string representation of a list of dictionaries into a list of dictionaries
+        evaluation_result_list = json.loads(evaluation_result.replace("'", '"'))
+        print(evaluation_result_list)
+        return jsonify({'message': 'Test submitted successfully', 'evaluation_result': evaluation_result_list}), 200
+    else:
+        return jsonify({'message': 'Failed to evaluate the test'}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
