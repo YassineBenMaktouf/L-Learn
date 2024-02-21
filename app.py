@@ -12,7 +12,6 @@ from functools import wraps
 import openai
 import random
 from bson.json_util import dumps
-from flask_cors import CORS
 import requests
 import time
 from requests.exceptions import HTTPError, Timeout, RequestException
@@ -22,7 +21,6 @@ import json
 
 load_dotenv()
 app = Flask(__name__, template_folder='.')
-CORS(app) #new
 openai.api_key = os.getenv("OPENAI_API_KEY")
 app.secret_key=os.getenv("Secret_key")
 app.wsgi_app = DebuggedApplication(app.wsgi_app, True)  
