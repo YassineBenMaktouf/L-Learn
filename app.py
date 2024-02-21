@@ -1,8 +1,7 @@
 
-from flask import Flask,jsonify,render_template,request,flash,redirect,make_response,url_for,session,send_file
+from flask import Flask,jsonify,render_template,request,flash,redirect,make_response,url_for,session
 from pymongo import MongoClient
 import os 
-import psycopg2
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash,check_password_hash
 from werkzeug.debug import DebuggedApplication
@@ -18,7 +17,6 @@ import requests
 import time
 from requests.exceptions import HTTPError, Timeout, RequestException
 import logging
-from pathlib import Path
 import json
 
 
