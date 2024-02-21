@@ -7,7 +7,7 @@ async function expandOnTopic(prompt) {
         const generatedCodeSection = document.getElementById('generatedCode');
         generatedCodeSection.innerHTML = '<div class="loader"></div>';
         
-        const response = await fetch(`http://127.0.0.1:5000/expand_on_topic`, {
+        const response = await fetch(`/expand_on_topic`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -51,7 +51,7 @@ submitBtn.addEventListener('click', async () => {
 });
 async function generateTest() {
     try {
-        const response = await fetch('http://127.0.0.1:5000/generate_multiple_choice_questions', {
+        const response = await fetch('/generate_multiple_choice_questions', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -136,7 +136,7 @@ async function submitTest() {
 
     // Send selected options to backend
     try {
-        const response = await fetch('http://127.0.0.1:5000/submit_test', {
+        const response = await fetch('/submit_test', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -161,6 +161,9 @@ async function submitTest() {
             responseData.evaluation_result.forEach(result => {
                 const p = document.createElement('p');
                 const isCorrect = result.answer === result.user_answer;
+                if(isCorrect){
+                    updatePoints();
+                }
         
                 // Create img elements for icons
                 const icon = document.createElement('img');
