@@ -233,6 +233,9 @@ def test():
 @app.route('/chat')
 def chat():
     return render_template('chat.html')
+@app.route('/describe_img')
+def describe_img():
+    return render_template('describe_img.html')
 @app.route('/profile')
 def profile():
     return render_template('profile.html')
@@ -642,6 +645,36 @@ def submit_test():
         return jsonify({'message': 'Test submitted successfully', 'evaluation_result': evaluation_result_list}), 200
     else:
         return jsonify({'message': 'Failed to evaluate the test'}), 500
+    
+#describe image from url
+@app.route('/analyze-image-url', methods=['POST'])
+def analyze_image_url():
+    data = request.get_json()
+    image_url = data.get('image_url')
+    
+    if not image_url:
+        return jsonify({'error': 'No image URL provided'}), 400
+
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-4-vision-preview",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Describe this image briefely."},
+                        {"type": "image_url", "image_url": image_url},
+                    ],
+                }
+            ],
+            max_tokens=300,
+        )
+        description = response.choices[0]['message']['content']
+        return jsonify({'description': description})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)

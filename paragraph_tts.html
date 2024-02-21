@@ -65,22 +65,17 @@ function readAloud(elementId, language = 'es-ES', speed = 1) {
     }
 }
 let incorrectAttempts = 0;
-
 function generateParagraphForTTS() {
     incorrectAttempts = 0;
     document.getElementById('checkParagraph').disabled = true;
     document.getElementById('userParagraphInput').value = '';
     updateFeedback('', '');
-
     fetch('/generate_paragraph_for_tts')
         .then(response => response.json())
         .then(data => {
             if (data.paragraph) {
-                // Storing the paragraph in hidden div's text (as per your setup)
                 document.getElementById('paragraphForTTS').innerText = data.paragraph;
-                // Enable the check button now that we have a paragraph
                 document.getElementById('checkParagraph').disabled = false;
-                // Hide the Next Paragraph button until needed
                 document.getElementById('nextParagraph').style.display = 'none';
             } else {
                 console.error('Failed to generate paragraph');
@@ -91,24 +86,17 @@ function generateParagraphForTTS() {
             console.error('Error occurred during fetch:', error);
             updateFeedback('Error fetching paragraph.', 'danger');
         });
-
-    // Assign the checkParagraph function to the Check Paragraph button's click event
     document.getElementById('checkParagraph').onclick = checkParagraph;
 }
 
 function checkParagraph() {
     const generatedParagraph = document.getElementById('paragraphForTTS').innerText.toLowerCase();
     const userParagraph = document.getElementById('userParagraphInput').value.toLowerCase();
-    
-    // Normalize the strings by removing symbols and numbers and then split into arrays of words
     const normalizedGeneratedWords = generatedParagraph.replace(/[^a-z\s]/g, '').trim().split(/\s+/);
     const normalizedUserWords = userParagraph.replace(/[^a-z\s]/g, '').trim().split(/\s+/);
-    
-    // Find incorrect and excess words
     const incorrectWords = normalizedUserWords.filter(word => !normalizedGeneratedWords.includes(word));
     const excessWords = normalizedUserWords.length > normalizedGeneratedWords.length;
     const insufficientWords = normalizedUserWords.length < normalizedGeneratedWords.length;
-    
     if (!excessWords && !insufficientWords && incorrectWords.length === 0) {
         updateFeedback('Correct!', 'success');
         document.getElementById('nextParagraph').style.display = 'block';
@@ -116,14 +104,14 @@ function checkParagraph() {
         updatePoints();
     } else {
         let feedbackMessage = '';
-        if (incorrectAttempts < 2) { // Before reaching the 3rd attempt
-            incorrectAttempts += 1; // Increment only for incorrect word attempts
+        if (incorrectAttempts < 2) {
+            incorrectAttempts += 1;
             feedbackMessage += `Incorrect words count: ${incorrectWords.length}. Attempts left: ${3 - incorrectAttempts}. `;
         } else {
             const incorrectWordsString = incorrectWords.join(', ');
             feedbackMessage += `Incorrect, wrong words: ${incorrectWordsString}. The correct sentence was: "${document.getElementById('paragraphForTTS').innerText}". `;
-            document.getElementById('nextParagraph').style.display = 'block'; // Show next button
-            document.getElementById('checkParagraph').disabled = true; // Disable check button
+            document.getElementById('nextParagraph').style.display = 'block';
+            document.getElementById('checkParagraph').disabled = true;
         }
         if (excessWords) {
             feedbackMessage += `Too many words. `;
@@ -148,115 +136,16 @@ function updateFeedback(message, type) {
         feedbackElement.classList.add(`text-${type}`);
     }
 }
-
-// Initial call to load the first paragraph
 document.addEventListener('DOMContentLoaded', function() {
-    generateParagraphForTTS(); // Call the function to generate the first paragraph
-
-    // Add an input event listener to the textarea
+    generateParagraphForTTS();
     document.getElementById('userParagraphInput').addEventListener('input', function() {
         const userInput = this.value;
-        // Remove numbers from the input and update the textarea value
         this.value = userInput.replace(/\d+/g, '');
     });
 });
-
-
-/*
-let incorrectAttempts = 0;
-const maxIncorrectAttempts = 2;
-
-function generateWordsForTTS() {
-    incorrectAttempts = 0;
-    disableWordButtons(true);
-    fetch('/generate_words_for_tts')
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('Network response was not ok');
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.words && data.words.length > 0 && data.correct_word) {
-                updateButtons(data.words, data.correct_word);
-                document.getElementById('wordfortts').innerText = data.correct_word;
-                document.getElementById('nextWord').style.display = 'none';
-            } else {
-                console.error('Failed to generate words');
-                document.getElementById('feedback').innerText = 'Failed to generate words.';
-                document.getElementById('feedback').classList.add('text-danger');
-                document.getElementById('feedback').classList.remove('text-success');
-            }
-        })
-        .catch(error => {
-            console.error('Error occurred during fetch:', error);
-            document.getElementById('feedback').innerText = 'Error fetching words.';
-            document.getElementById('feedback').classList.add('text-danger');
-            document.getElementById('feedback').classList.remove('text-success');
-        });
-}
-function updateButtons(words, correctWord) {
-    const buttonIds = ['word1fortts', 'word2fortts', 'word3fortts', 'word4fortts'];
-    words.forEach((word, index) => {
-        const button = document.getElementById(buttonIds[index]);
-        button.innerText = word;
-        button.disabled = false;
-        button.onclick = function() { checkAnswer(word, correctWord); };
-    });
-}
-function checkAnswer(selectedWord, correctWord) {
-    if (selectedWord === correctWord) {
-        document.getElementById('feedback').innerText = 'Correct!';
-        document.getElementById('feedback').classList.add('text-success');
-        document.getElementById('feedback').classList.remove('text-danger');
-        document.getElementById('nextWord').style.display = 'block';
-        updatePoints();
-        disableWordButtons(true);
-    } else {
-        handleIncorrectAnswerForWord(correctWord);
-    }
-}
-function handleIncorrectAnswerForWord(correctWord) {
-    incorrectAttempts += 1;
-    if (incorrectAttempts >= maxIncorrectAttempts) {
-        document.getElementById('feedback').innerText = `Incorrect! The correct word was: ${correctWord}.`;
-        document.getElementById('feedback').classList.add('text-danger');
-        document.getElementById('nextWord').style.display = 'block';
-        disableWordButtons(true);
-        document.getElementById('wordfortts').innerText = '';
-    } else {
-        document.getElementById('feedback').innerText = `Incorrect! Try again. Attempts left: ${maxIncorrectAttempts - incorrectAttempts}.`;
-        document.getElementById('feedback').classList.add('text-danger');
-    }
-}
-
-function nextWord() {
-    incorrectAttempts = 0;
-    document.getElementById('nextWord').style.display = 'none';
-    document.getElementById('feedback').innerText = '';
-    document.getElementById('feedback').classList.remove('text-success', 'text-danger');
-    resetButtonsToLoading();
-    generateWordsForTTS();
-}
-function disableWordButtons(disable) {
-    const buttons = document.querySelectorAll('.btn.btn-primary');
-    buttons.forEach(button => {
-        button.disabled = disable;
-    });
-}
-function resetButtonsToLoading() {
-    const buttons = document.querySelectorAll('.btn.btn-primary');
-    buttons.forEach(button => {
-        button.innerText = 'Loading..';
-        button.disabled = true;
-    });
-}
-document.addEventListener('DOMContentLoaded', generateWordsForTTS);
-*/
 </script> 
 {% endblock %}
 
 {% block scripts %}
-
 <script src="{{ url_for('static', filename='js/ourcode.js') }}" defer></script>
 {% endblock %}

@@ -1,0 +1,106 @@
+{% extends "mainfront/base.html" %}
+
+{% block content %}
+<div class="row justify-content-center mt-3">
+  <div class="col-lg-6 col-md-8 col-sm-10">
+      <div class="card mb-2">
+          <div class="card-body" >
+              <div class="page">
+                  <div class="container py-5">
+                      <div class="row">
+                          <div class="col">
+                              <h2 class="card-title text-center mb-4">Image description</h2>
+                              <div class="mt-4 d-flex justify-content-center">
+                                <input class="form-control mt-4 me-2" type="text" id="imageUrlInput" placeholder="Enter image URL here">
+                              </div>
+                              <div  class="mt-4 mb-4 d-flex justify-content-center">
+                                <button id="describeButton" class="btn btn-success btn-lg btn-block mr-4" onclick="analyzeImageUrl()" style="margin: 3px;">Process Image</button>
+                              </div>
+                              <div id="imageDisplay" class="mt-3 d-flex align-items-center justify-content-center"></div>
+                              <div>
+                                  <div id="analysisResult" class="mt-3 d-flex align-items-center justify-content-center" style="text-align: center;"></div>
+                              </div>
+                          </div>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      </div>
+  </div>
+</div>
+<script>
+let lastImageUrl = '';
+let limitusage=0;
+function analyzeImageUrl() {
+    const imageUrl = document.getElementById('imageUrlInput').value;
+    const describeButton = document.getElementById('describeButton');
+    const imageDisplay = document.getElementById('imageDisplay');
+    const analysisResult = document.getElementById('analysisResult');
+    const imageExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'];
+    const isImageUrl = imageExtensions.some(extension => imageUrl.toLowerCase().endsWith(extension));
+    if(limitusage>=2){
+        alert('You can not use this feature any more!');
+        describeButton.disabled = true;
+        return;
+    }
+    if (!isImageUrl) {
+        alert('Please enter a valid image URL.');
+        return;
+    }
+    if (imageUrl === lastImageUrl) {
+        alert('Please enter a new image URL.');
+        return;
+    }
+    describeButton.disabled = true;
+    describeButton.innerText='Processing..'
+    imageDisplay.innerHTML = '';
+    analysisResult.innerText = '';
+    if (!imageUrl) {
+        alert('Please enter an image URL.');
+        describeButton.disabled = false;
+        describeButton.innerText='Process Image'
+        return;
+    }
+    const img = new Image();
+    img.src = imageUrl;
+    img.alt = 'User submitted image';
+    img.onload = () => {
+        imageDisplay.appendChild(img);
+    };
+    img.onerror = () => {
+        imageDisplay.innerText = 'Failed to load image.';
+    };
+    limitusage+=1;
+    fetch('/analyze-image-url', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ image_url: imageUrl }),
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.description) {
+            analysisResult.innerText = 'Description: ' + data.description;
+        } else if (data.error) {
+            analysisResult.innerText = 'Error: ' + data.error;
+        } else {
+            analysisResult.innerText = 'No description available.';
+        }
+        lastImageUrl = imageUrl;
+        describeButton.disabled = false;
+        describeButton.innerText='Process Image'
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        analysisResult.innerText = 'Error: Could not analyze the image.';
+        describeButton.disabled = false;
+        describeButton.innerText='Process Image'
+    });
+}
+</script> 
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/ourcode.js') }}" defer></script>
+{% endblock %}
