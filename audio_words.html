@@ -39,7 +39,7 @@
   </div>
 </div>
 <script>
-function readAloud(elementId, language = 'es-ES', speed = 1) {
+function readAloud(elementId, language = 'en-US', speed = 1) {
     const text = document.getElementById(elementId).innerText;
     if ('speechSynthesis' in window) {
         const utterance = new SpeechSynthesisUtterance(text);

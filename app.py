@@ -200,7 +200,11 @@ def update_wanted_language(user_id):
     User_collection.update_one({'user_id': user_id}, {'$set': {'wanted_language': new_wanted_language}})
 
     # Return success message
-    return jsonify({'message': 'Wanted language updated successfully', 'new_wanted_language': new_wanted_language})
+    response = make_response(jsonify({'message': 'Wanted language updated successfully', 'new_wanted_language': new_wanted_language}))
+    response.set_cookie('wanted_language', value=new_wanted_language, max_age=302460*60)  # Expires in 30 days
+
+    return response
+
 @app.route('/')
 @auth_middleware
 def index():
@@ -340,9 +344,19 @@ def get_user(user_id):
 
     # Check if the user exists
     if user_data:
+        # Extract level from the user data
+        level = user_data[0].get('level', 'beginner')
+
         # Convert the result to JSON
         user_json = dumps(user_data[0])
-        return jsonify(user_json)
+
+        # Create response with user data
+        response = make_response(jsonify(user_json))
+
+        # Set the level in a cookie
+        response.set_cookie('level', value=level, max_age=302460*60)  # Expires in 30 days
+
+        return response
     else:
         return jsonify({'message': 'User not found'}), 404
     

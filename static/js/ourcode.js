@@ -159,7 +159,7 @@ try {
     console.error('Error retrieving user_id from session storage:', error);
 }
 const userId = document.cookie.split('; ').find(row => row.startsWith('user_id=')).split('=')[1];
-fetch(`http://127.0.0.1:5000/api/users/${userId}`)
+fetch(`/api/users/${userId}`)
 	.then(response => {
 	  if (!response.ok) {
 		throw new Error('Network response was not ok');
@@ -237,7 +237,7 @@ fetch(`http://127.0.0.1:5000/api/users/${userId}`)
             });
     
             // Make the fetch request to update the wanted language
-            fetch(`http://127.0.0.1:5000/api/users/update_wanted_language/${userId}`, {
+            fetch(`/api/users/update_wanted_language/${userId}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
