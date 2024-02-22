@@ -15,8 +15,8 @@
                                   <img src="static/img/audio.png" class="img-fluid w-100 rounded" alt="Img" style="max-width: 140px;">
                               </div>
                               <div  class="mt-4 mb-4 d-flex justify-content-center">
-                                <button class="btn btn-secondary btn-lg btn-block mr-4 " onclick="readAloud('paragraphForTTS','en-US',1)" style="margin: 3px;">🎧</button>
-                                <button class="btn btn-secondary btn-lg btn-block ml-4" onclick="readAloud('paragraphForTTS','en-US',0.5)" style="margin: 3px;">🐢</button>
+                                <button id="playAudioParag" class="btn btn-secondary btn-lg btn-block mr-4 " style="margin: 3px;">🎧</button>
+                                <button id="playAudioParagSlow" class="btn btn-secondary btn-lg btn-block ml-4" style="margin: 3px;">🐢</button>
                               </div>
                               <div  class="mt-4 mb-4 d-flex justify-content-center">
                                 <textarea id="userParagraphInput" class="form-control mt-4" rows="5" placeholder="Type the paragraph you hear here..."></textarea>   
@@ -39,37 +39,30 @@
   </div>
 </div>
 <script>
-function readAloud(elementId, language = 'en-US', speed = 1) {
-    const text = document.getElementById(elementId).innerText;
-    if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = language;
-        utterance.rate = speed;
-        let voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
-            let voice = voices.find(voice => voice.lang === language);
-            if (voice) utterance.voice = voice;
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(utterance);
-        } else {
-            window.speechSynthesis.onvoiceschanged = function() {
-                voices = window.speechSynthesis.getVoices();
-                let voice = voices.find(voice => voice.lang === language);
-                if (voice) utterance.voice = voice;
-                window.speechSynthesis.cancel();
-                window.speechSynthesis.speak(utterance);
-            };
-        }
-    } else {
-        alert("Your browser doesn't support text-to-speech. Please use a supported browser.");
+function readAloudParag(playbackRate = 1) {
+    let audioElement = document.getElementById('dynamicAudioParag');
+    if (!audioElement) {
+        audioElement = document.createElement('audio');
+        audioElement.id = 'dynamicAudioParag';
+        document.body.appendChild(audioElement);
     }
+    var currentTime = new Date().getTime();
+    audioElement.src = './static/audio/ttsparag.mp3?_=' + currentTime;
+    audioElement.load();
+    audioElement.playbackRate = playbackRate;
+    audioElement.play().catch(error => console.error('Error playing the audio file:', error));
 }
+document.getElementById('playAudioParag').addEventListener('click', function() { readAloudParag(1); });
+document.getElementById('playAudioParagSlow').addEventListener('click', function() { readAloudParag(0.6); });
+
 let incorrectAttempts = 0;
 function generateParagraphForTTS() {
     incorrectAttempts = 0;
     document.getElementById('checkParagraph').disabled = true;
     document.getElementById('userParagraphInput').value = '';
     updateFeedback('', '');
+    document.getElementById('playAudioParag').disabled = true;
+    document.getElementById('playAudioParagSlow').disabled = true;
     fetch('/generate_paragraph_for_tts')
         .then(response => response.json())
         .then(data => {
@@ -77,6 +70,26 @@ function generateParagraphForTTS() {
                 document.getElementById('paragraphForTTS').innerText = data.paragraph;
                 document.getElementById('checkParagraph').disabled = false;
                 document.getElementById('nextParagraph').style.display = 'none';
+                fetch('/tts_for_parag', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({paragraph: data.paragraph}),
+                })
+                .then(ttsResponse => {
+                    if (!ttsResponse.ok) {
+                        throw new Error('TTS Network response was not ok');
+                    }
+                    return ttsResponse.json();
+                })
+                .then(ttsData => {
+                    document.getElementById('playAudioParag').disabled = false;
+                    document.getElementById('playAudioParagSlow').disabled = false;
+                })
+                .catch(ttsError => {
+                    console.error('Error occurred during TTS fetch:', ttsError);
+                });
             } else {
                 console.error('Failed to generate paragraph');
                 updateFeedback('Failed to generate paragraph.', 'danger');
@@ -88,7 +101,6 @@ function generateParagraphForTTS() {
         });
     document.getElementById('checkParagraph').onclick = checkParagraph;
 }
-
 function checkParagraph() {
     const generatedParagraph = document.getElementById('paragraphForTTS').innerText.toLowerCase();
     const userParagraph = document.getElementById('userParagraphInput').value.toLowerCase();
@@ -117,16 +129,12 @@ function checkParagraph() {
             document.getElementById('nextParagraph').style.display = 'block';
             document.getElementById('checkParagraph').disabled = true;
         }
-        
         updateFeedback(`${feedbackMessage}Try again.`, 'danger');
     }
 }
-
-
 function nextParagraph() {
     generateParagraphForTTS();
 }
-
 function updateFeedback(message, type) {
     const feedbackElement = document.getElementById('feedback');
     feedbackElement.innerText = message;

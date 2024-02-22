@@ -15,8 +15,8 @@
                                   <img src="static/img/audio.png" class="img-fluid w-100 rounded" alt="Img" style="max-width: 140px;">
                               </div>
                               <div  class="mt-4 mb-4 d-flex justify-content-center">
-                                <button class="btn btn-secondary btn-lg btn-block mr-4 " onclick="readAloud('wordfortts','en-US',1)" style="margin: 3px;">🎧</button>
-                                <button class="btn btn-secondary btn-lg btn-block ml-4" onclick="readAloud('wordfortts','en-US',0.5)" style="margin: 3px;">🐢</button>
+                                <button id="playAudioWord" class="btn btn-secondary btn-lg btn-block mr-4 " style="margin: 3px;">🎧</button>
+                                <button id="playAudioWordSlow" class="btn btn-secondary btn-lg btn-block ml-4" style="margin: 3px;">🐢</button>
                               </div>
                               <div  class="mt-4 mb-4 d-flex justify-content-center">
                                   <button id="word1fortts" class="btn btn-primary btn-block mr-2" style="margin: 3px;">Loading..</button>
@@ -39,31 +39,21 @@
   </div>
 </div>
 <script>
-function readAloud(elementId, language = 'en-US', speed = 1) {
-    const text = document.getElementById(elementId).innerText;
-    if ('speechSynthesis' in window) {
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.lang = language;
-        utterance.rate = speed;
-        let voices = window.speechSynthesis.getVoices();
-        if (voices.length > 0) {
-            let voice = voices.find(voice => voice.lang === language);
-            if (voice) utterance.voice = voice;
-            window.speechSynthesis.cancel();
-            window.speechSynthesis.speak(utterance);
-        } else {
-            window.speechSynthesis.onvoiceschanged = function() {
-                voices = window.speechSynthesis.getVoices();
-                let voice = voices.find(voice => voice.lang === language);
-                if (voice) utterance.voice = voice;
-                window.speechSynthesis.cancel();
-                window.speechSynthesis.speak(utterance);
-            };
-        }
-    } else {
-        alert("Your browser doesn't support text-to-speech. Please use a supported browser.");
+function readAloudWord(playbackRate = 1) {
+    let audioElement = document.getElementById('dynamicAudio');
+    if (!audioElement) {
+        audioElement = document.createElement('audio');
+        audioElement.id = 'dynamicAudio';
+        document.body.appendChild(audioElement);
     }
+    var currentTime = new Date().getTime();
+    audioElement.src = './static/audio/ttsword.mp3?_=' + currentTime;
+    audioElement.load();
+    audioElement.playbackRate = playbackRate;
+    audioElement.play().catch(error => console.error('Error playing the audio file:', error));
 }
+document.getElementById('playAudioWord').addEventListener('click', function() { readAloudWord(1); });
+document.getElementById('playAudioWordSlow').addEventListener('click', function() { readAloudWord(0.5); });
 
 let incorrectAttempts = 0;
 const maxIncorrectAttempts = 2;
@@ -71,6 +61,8 @@ const maxIncorrectAttempts = 2;
 function generateWordsForTTS() {
     incorrectAttempts = 0;
     disableWordButtons(true);
+    document.getElementById('playAudioWord').disabled = true;
+    document.getElementById('playAudioWordSlow').disabled = true;
     fetch('/generate_words_for_tts')
         .then(response => {
             if (!response.ok) {
@@ -83,6 +75,25 @@ function generateWordsForTTS() {
                 updateButtons(data.words, data.correct_word);
                 document.getElementById('wordfortts').innerText = data.correct_word;
                 document.getElementById('nextWord').style.display = 'none';
+                fetch('/tts_for_word', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({correct_word: data.correct_word}),
+                })
+                .then(ttsResponse => {
+                    if (!ttsResponse.ok) {
+                        throw new Error('TTS Network response was not ok');
+                    }
+                    return ttsResponse.json();
+                })
+                .then(ttsData => {
+                    document.getElementById('playAudioWord').disabled = false;
+                    document.getElementById('playAudioWordSlow').disabled = false;                })
+                .catch(ttsError => {
+                    console.error('Error occurred during TTS fetch:', ttsError);
+                });
             } else {
                 console.error('Failed to generate words');
                 document.getElementById('feedback').innerText = 'Failed to generate words.';

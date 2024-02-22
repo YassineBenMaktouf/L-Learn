@@ -371,21 +371,6 @@ def get_user(user_id):
     else:
         return jsonify({'message': 'User not found'}), 404
     
-@app.route('/api/openai/completion', methods=['POST'])
-def openai_completion():
-    # Get the prompt from the request
-    prompt = request.json.get('prompt')
-    engine = request.json.get('engine', "gpt-3.5-turbo")
-    max_tokens = request.json.get('max_tokens', 50)
-    
-    # Make the completion request
-    response = openai.Completion.create(
-        engine=engine,
-        prompt=prompt,
-        max_tokens=max_tokens
-    )
-    print(response)
-    return jsonify({'response': response.choices[0].text.strip()})
 
 #chatbot code:
 # Initialize a simple in-memory structure to hold conversation histories
@@ -706,6 +691,31 @@ def analyze_image_url():
             return jsonify({'error': 'Failed to fetch response from OpenAI', 'status_code': response.status_code})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+   
+#tts1 openai
+@app.route('/tts_for_word', methods=['POST'])
+def tts_for_word():
+    data = request.json
+    tts_input = data['correct_word'] if 'correct_word' in data else ''
+    response = openai.OpenAI().audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=tts_input,
+    )
+    response.stream_to_file("./static/audio/ttsword.mp3")
+    return jsonify({"message": "TTS created successfully."})
+
+@app.route('/tts_for_parag', methods=['POST'])
+def tts_for_parag():
+    data = request.json
+    tts_input = data['paragraph'] if 'paragraph' in data else ''
+    response = openai.OpenAI().audio.speech.create(
+        model="tts-1",
+        voice="alloy",
+        input=tts_input,
+    )
+    response.stream_to_file("./static/audio/ttsparag.mp3")
+    return jsonify({"message": "TTS created successfully."})
 
 if __name__ == '__main__':
     app.run(debug=True)
