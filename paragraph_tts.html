@@ -104,7 +104,11 @@ function checkParagraph() {
         updatePoints();
     } else {
         let feedbackMessage = '';
-        if (incorrectAttempts < 2) {
+        if (excessWords) {
+            feedbackMessage += `Too many words. Expected ${normalizedGeneratedWords.length} words.`;
+        } else if (insufficientWords) {
+            feedbackMessage += `Not enough words. Expected ${normalizedGeneratedWords.length} words. `;
+        } else if (incorrectAttempts < 2) {
             incorrectAttempts += 1;
             feedbackMessage += `Incorrect words count: ${incorrectWords.length}. Attempts left: ${3 - incorrectAttempts}. `;
         } else {
@@ -113,12 +117,7 @@ function checkParagraph() {
             document.getElementById('nextParagraph').style.display = 'block';
             document.getElementById('checkParagraph').disabled = true;
         }
-        if (excessWords) {
-            feedbackMessage += `Too many words. `;
-        }
-        if (insufficientWords) {
-            feedbackMessage += `Not enough words. `;
-        }
+        
         updateFeedback(`${feedbackMessage}Try again.`, 'danger');
     }
 }

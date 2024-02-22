@@ -62,32 +62,29 @@ async function generateTest() {
         const data = await response.json();
         console.log(data);
 
-        // Select the first element of the questions array
-        const questionsSet = data.questions[0];
+        // Directly use the questions array from the response
+        const questions = data.questions;
         
         // Display the generated questions with checkboxes
         const generatedCodeSection = document.getElementById('questions');
         generatedCodeSection.innerHTML = '<h2>Generated Questions</h2>';
 
-        // Split the questionsSet into individual questions
-        const questions = questionsSet.split('\n\n');
-
-        // Limit to a maximum of 5 questions
+        // Limit to a maximum of 5 questions (though your API seems to always return 4)
         const maxQuestions = Math.min(questions.length, 5);
 
         // Iterate over questions up to the maximum limit
         for (let index = 0; index < maxQuestions; index++) {
-            const question = questions[index];
-            const options = question.split('\n').filter(option => option.trim() !== ''); // Split by newline and remove empty lines
-            const questionText = options.shift(); // Remove and store the question text
+            const fullQuestion = questions[index]; // Each question is already an individual string
+            const parts = fullQuestion.split('\n').filter(part => part.trim() !== ''); // Split by newline and remove empty lines
+            const questionText = parts.shift(); // Remove and store the question text
             generatedCodeSection.innerHTML += `
                 <div class="form-group">
-                    <label for="question-${index}">${index + 1}) ${questionText}</label><br>
-                    ${options.slice(0, 4).map((opt, optIndex) => `
+                    <label for="question-${index}">${questionText}</label><br>
+                    ${parts.map((opt, optIndex) => `
                     <div class="form-check">
-                    <input class="form-check-input" type="radio" name="question-${index}" id="radio-${index}-${optIndex}" value="${optIndex}">
-                    <label class="form-check-label" for="radio-${index}-${optIndex}">${opt}</label>
-                </div>
+                        <input class="form-check-input" type="radio" name="question-${index}" id="radio-${index}-${optIndex}" value="${optIndex}">
+                        <label class="form-check-label" for="radio-${index}-${optIndex}">${opt}</label>
+                    </div>
                     `).join('')}
                 </div>
             `;
@@ -107,24 +104,19 @@ async function submitTest() {
     const loadingSpinner = document.createElement('div');
     loadingSpinner.classList.add('loader');
     resultContainer.querySelector('.card-body').appendChild(loadingSpinner);
-    resultContainer.style.visibility = 'hidden'; // Hide the result container initially
-    
-    // Loop through each question and get the selected option
+    resultContainer.style.visibility = 'hidden';
+
     for (let index = 0; index < 4; index++) {
-        const questText = document.querySelector(`label[for="question-${index}"]`).textContent;
-        console.log(questText);
         const questionText = document.querySelector(`label[for="question-${index}"]`).textContent;
         const options = [];
         const selectedOption = document.querySelector(`input[name="question-${index}"]:checked`);
         const selectedOptionIndex = selectedOption ? parseInt(selectedOption.value) : -1;
 
-        // Get all options for the question
         for (let optIndex = 0; optIndex < 4; optIndex++) {
             const optionText = document.querySelector(`label[for="radio-${index}-${optIndex}"]`).textContent.trim();
             options.push(optionText);
         }
 
-        // Include the question, options, and selected option index in the response
         selectedOptions.push({
             question: questionText,
             options: options,
@@ -132,69 +124,54 @@ async function submitTest() {
         });
     }
 
-    console.log(selectedOptions);
-
-    // Send selected options to backend
     try {
         const response = await fetch('/submit_test', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ selectedOptions })
+            body: JSON.stringify({ selectedOptions: selectedOptions })
         });
         loadingSpinner.remove();
         resultContainer.style.visibility = 'visible';
         const responseData = await response.json();
-        console.log(responseData);
+
+        if (responseData.error) {
+            console.error('Error:', responseData.error);
+            return;
+        }
 
         const tryButton = document.getElementById('tryBtn');
         tryButton.style.display = 'block';
-        
-        // Display evaluation result in the evaluationResult div
+
         const evaluationResultDiv = document.getElementById('evaluationResult');
-        if (evaluationResultDiv) {
-            // Clear previous content
-            evaluationResultDiv.innerHTML = '';
+        evaluationResultDiv.innerHTML = '';
 
-            // Create and append new elements for each evaluation result
-            responseData.evaluation_result.forEach(result => {
-                const p = document.createElement('p');
-                const isCorrect = result.answer === result.user_answer;
-                if(isCorrect){
-                    updatePoints();
-                }
-        
-                // Create img elements for icons
-                const icon = document.createElement('img');
-                icon.src = isCorrect ? './static/img/checked.png' : './static/img/cancel.png';
-                icon.alt = isCorrect ? 'Correct' : 'Incorrect';
-        
-                // Create span element for user's answer
-                const userAnswerSpan = document.createElement('span');
-                userAnswerSpan.textContent = `Your Answer: ${result.user_answer}`;
-                userAnswerSpan.style.color = isCorrect ? 'green' : 'red';
-                icon.classList.add('icon'); // Add a class to the image for styling
+        responseData.evaluation_result.forEach(result => {
+            const p = document.createElement('p');
+            const isCorrect = result.answer === result.user_answer;
 
-                // Append icons and user's answer to paragraph element
-                p.appendChild(icon);
-                p.appendChild(document.createTextNode(' ')); // Add space between icon and user's answer
-                p.appendChild(userAnswerSpan);
-        
-                // Append question and correct answer to paragraph element
-                p.innerHTML += `<br>Question: ${result.question}<br>Correct Answer: ${result.answer}`;
-        
-                // Append the paragraph element to the evaluation result div
-                evaluationResultDiv.appendChild(p);
-            });
-            
-        } else {
-            console.error('EvaluationResult div not found');
-        }
+            const icon = document.createElement('img');
+            icon.src = isCorrect ? './static/img/checked.png' : './static/img/cancel.png';
+            icon.alt = isCorrect ? 'Correct' : 'Incorrect';
+            icon.classList.add('icon');
+
+            const userAnswerSpan = document.createElement('span');
+            userAnswerSpan.textContent = `Your Answer: ${result.user_answer}`;
+            userAnswerSpan.style.color = isCorrect ? 'green' : 'red';
+
+            p.appendChild(icon);
+            p.appendChild(document.createTextNode(' '));
+            p.appendChild(userAnswerSpan);
+            p.innerHTML += `<br>Question: ${result.question}<br>Correct Answer: ${result.answer}`;
+
+            evaluationResultDiv.appendChild(p);
+        });
     } catch (error) {
         console.error('Error submitting test:', error);
     }
 }
+
 
 
 

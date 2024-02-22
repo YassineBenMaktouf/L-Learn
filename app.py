@@ -244,22 +244,33 @@ def profile():
 
 
 #generate sentence
-
-
 @app.route('/generate_sentence')
 def generate_sentence():
+    headers = {
+        'Authorization': f'Bearer {openai.api_key}',
+        'Content-Type': 'application/json',
+    }
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": "Generate a random sentence with 6 to 8 words."},
+            {"role": "user", "content": "Give me a random sentence that has between 6 to 8 words. DO NOT INCLUDE ANY OTHER TEXT, GIVE ME JUST THE SENTENCE."}
+        ]
+    }
+
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant."},
-                {"role": "user", "content": "give me a random sentence that has between 6 to 8 words.DO NOT INCLUDE ANY OTHER TEXT GIVE ME JUST THE SENTENCE."}
-            ]
-        )
-        sentence = response.choices[0].message['content'].strip()
-        words = sentence.split()
-        random.shuffle(words)  # Shuffle the words to create the game challenge
-        return jsonify({'original': sentence, 'shuffled': words})
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        if response.status_code == 200:
+            response_data = response.json()
+            sentence = response_data['choices'][0]['message']['content'].strip()
+            words = sentence.split()
+            if 6 <= len(words) <= 8:  # Ensure the sentence has between 6 to 8 words
+                random.shuffle(words)  # Shuffle the words to create the game challenge
+                return jsonify({'original': sentence, 'shuffled': words}), 200
+            else:
+                return jsonify({'error': 'Generated sentence does not meet the word count requirement.'}), 400
+        else:
+            return jsonify({'error': 'Failed to fetch response from OpenAI'}), response.status_code
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -381,10 +392,6 @@ def openai_completion():
 # In a production environment, consider using a more persistent storage solution
 conversations = {}
 
-headers = {
-    'Authorization': f'Bearer {openai.api_key}',
-    'Content-Type': 'application/json',
-}
 
 def get_conversation_history(session_id):
     return conversations.get(session_id, [])
@@ -431,6 +438,10 @@ def suggest_topic_if_new_conversation(messages):
 
 @app.route('/ask', methods=['POST'])
 def ask():
+    headers = {
+    'Authorization': f'Bearer {openai.api_key}',
+    'Content-Type': 'application/json',
+    }
     data = request.json
     session_id = data.get('session_id')  # A unique session identifier from the client
     user_message = data['message']
@@ -487,119 +498,131 @@ def query_image_generation(prompt, retry_limit=3, timeout=10):
 
 @app.route('/generate_image_with_random_word')
 def generate_image_with_random_word():
+    headers = {
+        'Authorization': f'Bearer {openai.api_key}',
+        'Content-Type': 'application/json',
+    }
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": "Generate 4 random words that can be visually represented. DO NOT INCLUDE ANY ADDITIONAL CHARACTERS OR SYMBOLS. DO NOT ENUMERATE THE WORDS. MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'."}
+        ]
+    }
     try:
-        # Call GPT-3 Turbo model to generate random words
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Generate 4 random words that can be represented by an image.DO NOT INCLUDE ANY ADDITIONAL CARACTERS OR SYMBOLS.DO NOT ENUMERATE THE WORDS.MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'"}
-            ]
-        )
-
-        # Extract the generated words from the response
-        words = response.choices[0].message['content'].strip().split("\n")
-        # Select one random word
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        response.raise_for_status()
+        words = response.json()['choices'][0]['message']['content'].strip().split("\n")
         object_name = random.choice(words)
-        # Construct a prompt for image generation
         prompt = f"Generate an image of {object_name}"
-        # Query image generation from Stable Diffusion API
         image_data = query_image_generation(prompt)
-
         if image_data:
-            # Save or process the image data as required
-            # For example, you can save it to a file
-            with open('./static/img/generated_image.png', 'wb') as f:
+            file_path = './static/img/generated_image.png'
+            with open(file_path, 'wb') as f:
                 f.write(image_data)
-
-            # Return a success message or image URL
-            return jsonify({'message':'Image generated successfully','words': words,'correct_word' : object_name })
-
+            return jsonify({'message': 'Image generated successfully', 'words': words, 'correct_word': object_name})
         else:
             return jsonify({'message': 'Failed to generate image'})
-
     except Exception as e:
         logging.error(f'Error occurred: {e}')
         return jsonify({'message': 'Failed to generate image. Internal server error.'})
 
 @app.route('/generate_words_for_tts')
 def generate_words_for_tts():
+    headers = {
+        'Authorization': f'Bearer {openai.api_key}',
+        'Content-Type': 'application/json',
+    }
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": "Generate 4 random words that are close in pronunciation but not too much in English. DO NOT INCLUDE ANY ADDITIONAL CHARACTERS OR SYMBOLS. DO NOT ENUMERATE THE WORDS. MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'."}
+        ]
+    }
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Generate 4 random words that are close in pronunciation but not too much in english.DO NOT INCLUDE ANY ADDITIONAL CARACTERS OR SYMBOLS.DO NOT ENUMERATE THE WORDS.MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'"}
-            ]
-        )
-        # Extract the generated words from the response
-        words = response.choices[0].message['content'].strip().split("\n")
-        # Select one random word
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        response.raise_for_status()  
+        words = response.json()['choices'][0]['message']['content'].strip().split("\n")
         correct_word = random.choice(words)
-        return jsonify({'words': words,'correct_word' : correct_word})
+        return jsonify({'words': words, 'correct_word': correct_word})
     except Exception as e:
+        logging.error(f'Error occurred: {e}')
         return jsonify({'error': str(e)}), 500
     
 
     
 @app.route('/generate_paragraph_for_tts')
 def generate_paragraph_for_tts():
+    headers = {
+        'Authorization': f'Bearer {openai.api_key}',
+        'Content-Type': 'application/json',
+    }
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": "Generate a random sentence suitable for language learning. The sentence should be easy to understand and pronounce for English speakers. DO NOT INCLUDE ANY ADDITIONAL CHARACTERS OR SYMBOLS like '.', ',', '?', etc."}
+        ]
+    }
     try:
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Generate a random sentence suitable for text-to-speech. The sentence should be easy to understand and pronounce for English speakers.DO NOT INCLUDE ANY ADDITIONAL CARACTERS OR SYMBOLS like '.',',','?' ect."}
-            ]
-        )
-        paragraph = response.choices[0].message['content'].strip()
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        response.raise_for_status() 
+        paragraph = response.json()['choices'][0]['message']['content'].strip()
         return jsonify({'paragraph': paragraph})
     except Exception as e:
+        logging.error(f'Error occurred: {e}')
         return jsonify({'error': str(e)}), 500
     
 
 #for quiz "test"
 @app.route('/expand_on_topic', methods=['POST'])
 def expand_on_topic():
+    headers = {
+        'Authorization': f'Bearer {openai.api_key}',
+        'Content-Type': 'application/json',
+    }
+    prompt = request.json.get('prompt')
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": "Expand on a Topic provided by the user."},
+            {"role": "user", "content": prompt}
+        ]
+    }
     try:
-        prompt = request.json.get('prompt')
-        response = openai.ChatCompletion.create(
-           
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Expand on a Topic provided by the user ."},
-                {"role": "user", "content": prompt}  # Provide the user's topic as part of the messages
-
-            ]
-        )
-        sentence = response.choices[0].message['content'].strip()
-      
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        response.raise_for_status()
+        sentence = response.json()['choices'][0]['message']['content'].strip()
         return jsonify({'original': sentence})
     except Exception as e:
+        logging.error(f'Error occurred: {e}')
         return jsonify({'error': str(e)}), 500
     
 @app.route('/generate_multiple_choice_questions', methods=['POST'])
 def generate_multiple_choice_questions():
+    headers = {
+        'Authorization': f'Bearer {openai.api_key}',
+        'Content-Type': 'application/json',
+    }
+    topic = request.json.get('topic')
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": f"Generate 4 multiple-choice questions based on the text: {topic}."}
+        ]
+    }
     try:
-        topic = request.json.get('topic')
-        # Generate questions based on the topic
-        response = openai.Completion.create(
-            engine="gpt-3.5-turbo-instruct",
-            prompt=f"Generate four multiple-choice questions based on the text: {topic}.",
-            max_tokens=219,  
-            n=1,  
-            stop=None,  
-            temperature=0.7,  
-            top_p=1,  
-            frequency_penalty=0,  
-            presence_penalty=0.6,  
-           
-        )
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        response.raise_for_status()  # Check for HTTP request errors
         
-        # Extract questions from the response
-        questions = [choice['text'].strip() for choice in response['choices']]
+        # The response data should directly give you the text containing questions
+        questions_untreated = response.json()['choices'][0]['message']['content'].strip()
         
-        # Return the generated questions
+        # Since the questions are expected to be formatted as a single string with questions split by two newlines, we don't need further processing
+        questions = questions_untreated.split('\n\n')  # Splitting by two newlines to separate each question
+
         return jsonify({'questions': questions})
-    
+
     except Exception as e:
+        logging.error(f'Error occurred: {e}')
         return jsonify({'error': str(e)}), 500
     
 def generate_prompt(selected_options):
@@ -616,47 +639,31 @@ def generate_prompt(selected_options):
                 prompt += f"[{chr(ord('A') + i)}] {opt} (User's Choice)\n"
             else:
                 prompt += f"[{chr(ord('A') + i)}] {opt}\n"
-        
-    
     return prompt
 
 @app.route('/submit_test', methods=['POST'])
 def submit_test():
-
-    # Extract data from the request
     selected_options = request.json.get('selectedOptions', [])
-
-    # Convert selected options data into a format suitable for OpenAI
-    prompt = generate_prompt(selected_options)
-    
-    # Call OpenAI to evaluate the prompt
-    response = openai.Completion.create(
-        engine="gpt-3.5-turbo-instruct",  # Choose the engine you want to use
-        prompt=prompt,
-        max_tokens=220,
-        n=1,  
-        stop=None,  
-        temperature=0.7,  
-        top_p=1,  
-        frequency_penalty=0,  
-        presence_penalty=0.6,  # Adjust the max_tokens parameter as needed
-    )
-    # Process the response from OpenAI
-    if response.choices:
-        # Extract the evaluation result from the response
-        evaluation_result = response.choices[0].text.strip()
-
-        # Process the evaluation result as needed
-        # For example, update user points based on the evaluation
-        print('________________________________________________')
-        print(evaluation_result) 
-        
-        # Convert the string representation of a list of dictionaries into a list of dictionaries
+    prompt = generate_prompt(selected_options)  
+    headers = {
+        'Authorization': f'Bearer {openai.api_key}',
+        'Content-Type': 'application/json',
+    }
+    data = {
+        "model": "gpt-3.5-turbo",
+        "messages": [
+            {"role": "system", "content": prompt}
+        ]
+    }
+    try:
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        response.raise_for_status() 
+        evaluation_result = response.json()['choices'][0]['message']['content'].strip()
         evaluation_result_list = json.loads(evaluation_result.replace("'", '"'))
-        print(evaluation_result_list)
         return jsonify({'message': 'Test submitted successfully', 'evaluation_result': evaluation_result_list}), 200
-    else:
-        return jsonify({'message': 'Failed to evaluate the test'}), 500
+    except Exception as e:
+        logging.error(f'Error occurred: {e}')
+        return jsonify({'error': str(e)}), 500
     
 #describe image from url
 @app.route('/analyze-image-url', methods=['POST'])
@@ -667,26 +674,38 @@ def analyze_image_url():
     if not image_url:
         return jsonify({'error': 'No image URL provided'}), 400
 
-    try:
-        response = openai.ChatCompletion.create(
-            model="gpt-4-vision-preview",
-            messages=[
+    headers = {
+        'Authorization': f'Bearer {openai.api_key}',
+        'Content-Type': 'application/json',
+    }
+    data ={
+        "model": "gpt-4-vision-preview",
+        "messages": [
+            {
+            "role": "user",
+            "content": [
+                {"type": "text", "text": "Describe this image briefely."},
                 {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Describe this image briefely."},
-                        {"type": "image_url", "image_url": image_url},
-                    ],
-                }
+                "type": "image_url",
+                "image_url": {
+                    "url": image_url,
+                },
+                },
             ],
-            max_tokens=300,
-        )
-        description = response.choices[0]['message']['content']
-        return jsonify({'description': description})
+            }
+        ],
+        "max_tokens" : 300
+    }
+    try:
+        response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+        if response.ok:
+            response_data = response.json()
+            description = response_data['choices'][0]['message']['content']
+            return jsonify({'description': description})
+        else:
+            return jsonify({'error': 'Failed to fetch response from OpenAI', 'status_code': response.status_code})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)
