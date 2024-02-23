@@ -21,7 +21,7 @@ from langchain.chains import LLMChain
 from langchain_community.chat_models import ChatOpenAI
 from langchain.prompts import PromptTemplate
 from langchain.memory import ConversationBufferMemory
-from trulens_eval import TruChain, Feedback, OpenAI as tOpenAI, Huggingface, Tru, Select,Tru
+from trulens_eval import TruChain, Feedback, OpenAI as tOpenAI, Huggingface, Tru
 
 
 load_dotenv()
@@ -34,7 +34,7 @@ client = MongoClient(url)
 hf_api_key=os.getenv('HUGGINGFACE_API_KEY')
 HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
 
-os.environ["OPENAI_API_KEY"] = os.getenv('OPENAI_API_KEY')
+os.environ["OPENAI_API_KEY"] = openai.api_key
 topenai = tOpenAI()
 tru = Tru()
 
@@ -468,7 +468,9 @@ template = """You are a chatbot having a conversation with a human.
         {chat_history}
         Human: {human_input}
         Chatbot:"""
-prompt_template = PromptTemplate(input_variables=["chat_history", "human_input"], template=template)
+prompt_template = PromptTemplate(
+    input_variables=["chat_history", "human_input"], template=template
+    )
 memory = ConversationBufferMemory(memory_key="chat_history")
 llm = ChatOpenAI(model_name="gpt-3.5-turbo")
 chain = LLMChain(llm=llm, prompt=prompt_template, memory=memory, verbose=True)
@@ -479,8 +481,11 @@ f_violent = Feedback(topenai.moderation_violence, higher_is_better=False).on_out
 f_selfharm = Feedback(topenai.moderation_selfharm, higher_is_better=False).on_output()
 f_maliciousness = Feedback(topenai.maliciousness_with_cot_reasons, higher_is_better=False).on_output()
 
-chain_recorder = TruChain(chain, app_id="GPT4-chatbot", feedbacks=[f_relevance,f_hate,f_violent,f_selfharm,f_maliciousness],)
+chain_recorder = TruChain(
+    chain, app_id="GPT4-chatbot", feedbacks=[f_relevance,f_hate,f_violent,f_selfharm,f_maliciousness]
+    )
 
+messages_test = []
 def record_conversation_and_feedback(messages):
     filename = "conversation_eval.csv"
     with open(filename, mode='w', newline='', encoding='utf-8') as file:
@@ -494,6 +499,19 @@ def record_conversation_and_feedback(messages):
             writer.writerow([role, content, feedback_str])
             print(feedback_str)
 
+def record_conversation_and_feedback_test(messages_test):
+    filename = "conversation_eval.csv"
+    with open(filename, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Role", "Content", "Feedback"])
+        for message in messages_test:
+            content = message["content"]
+            role = message["role"]
+            feedback = message.get("feedback", {})
+            # Serializing feedback to JSON string
+            feedback_str = json.dumps(feedback, ensure_ascii=False, default=str) if feedback else " "
+            writer.writerow([role, content, feedback_str])
+
 
 
 
@@ -504,18 +522,20 @@ def ask():
     user_message = data['message']
 
     conversation_history = get_conversation_history(session_id)
-
     conversation_history.append({"role": "user", "content": user_message})
 
-    # Assume chain.run() correctly handles updating its internal state with the conversation history
-    
-    full_response = chain.run(user_message)
-    
-    # You need to handle how you get feedback from chain_recorder or any other mechanism
-    feedback = chain_recorder.feedbacks  # Placeholder for where you would get feedback
+    try:
+        with chain_recorder as recording:
+            full_response = chain.run(user_message)
+            feedback = recording.get_feedback()
+    except AttributeError as e:
+        print(f"Error retrieving feedback: {e}")
+        feedback = {}  # Fallback to empty feedback if there's an issue
+
     conversation_history.append({"role": "assistant", "content": full_response, "feedback": feedback})
     update_conversation_history(session_id, user_message, full_response)
-    record_conversation_and_feedback(conversation_history)
+    record_conversation_and_feedback(conversation_history)  # Pass a list with the last message
+
     return jsonify({'response': full_response.strip()}), 200
 
 #generate image with words
