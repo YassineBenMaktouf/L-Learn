@@ -1,4 +1,3 @@
-
 from flask import Flask,jsonify,render_template,request,flash,redirect,make_response,url_for,session
 from pymongo import MongoClient
 import os 
@@ -17,6 +16,12 @@ import time
 from requests.exceptions import HTTPError, Timeout, RequestException
 import logging
 import json
+import csv
+from langchain.chains import LLMChain
+from langchain_community.chat_models import ChatOpenAI
+from langchain.prompts import PromptTemplate
+from langchain.memory import ConversationBufferMemory
+from trulens_eval import TruChain, Feedback, OpenAI as tOpenAI, Huggingface, Tru, Select,Tru
 
 
 load_dotenv()
@@ -29,6 +34,9 @@ client = MongoClient(url)
 hf_api_key=os.getenv('HUGGINGFACE_API_KEY')
 HUGGINGFACE_API_URL = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
 
+os.environ["OPENAI_API_KEY"] = os.getenv('OPENAI_API_KEY')
+topenai = tOpenAI()
+tru = Tru()
 
 db = client.get_database("Languify")
 collection = db["products"]
@@ -437,25 +445,11 @@ def update_conversation_history(session_id, user_message, bot_message):
     conversations[session_id].append({"role": "assistant", "content": bot_message})
 
 def create_prompt_with_instructions(messages, instruction="Respond with short, engaging messages. Ask questions or suggest topics to keep the conversation going."):
-    """
-    Prepares a prompt with instructions for the model to follow, ensuring the responses are not only brief but also engaging and interactive.
-    
-    :param messages: The conversation history as a list of message dictionaries.
-    :param instruction: A string containing the instruction for the model.
-    :return: A list of messages including the instruction.
-    """
-    # Add the instruction as the first message from the system
     prompt_messages = [{"role": "system", "content": instruction}] + messages
     return prompt_messages
 
 
 def suggest_topic_if_new_conversation(messages):
-    """
-    Suggests a topic if it's the beginning of a new conversation.
-    
-    :param messages: The conversation history as a list of message dictionaries.
-    :return: The potentially modified list of messages with a suggested topic added if it's a new conversation.
-    """
     topics = [
         "Would you like to talk about 'technology and its impacts on society'?",
         "How about discussing 'the future of space exploration'?",
@@ -469,43 +463,60 @@ def suggest_topic_if_new_conversation(messages):
         default_topic_instruction = random.choice(topics)
         messages.insert(0, {"role": "system", "content": default_topic_instruction})
     return messages
+#######
+template = """You are a chatbot having a conversation with a human.
+        {chat_history}
+        Human: {human_input}
+        Chatbot:"""
+prompt_template = PromptTemplate(input_variables=["chat_history", "human_input"], template=template)
+memory = ConversationBufferMemory(memory_key="chat_history")
+llm = ChatOpenAI(model_name="gpt-3.5-turbo")
+chain = LLMChain(llm=llm, prompt=prompt_template, memory=memory, verbose=True)
+
+f_relevance = Feedback(topenai.relevance).on_input_output()
+f_hate = Feedback(topenai.moderation_hate).on_output()
+f_violent = Feedback(topenai.moderation_violence, higher_is_better=False).on_output()
+f_selfharm = Feedback(topenai.moderation_selfharm, higher_is_better=False).on_output()
+f_maliciousness = Feedback(topenai.maliciousness_with_cot_reasons, higher_is_better=False).on_output()
+
+chain_recorder = TruChain(chain, app_id="GPT4-chatbot", feedbacks=[f_relevance,f_hate,f_violent,f_selfharm,f_maliciousness],)
+
+def record_conversation_and_feedback(messages):
+    filename = "conversation_eval.csv"
+    with open(filename, mode='w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(["Role", "Content", "Feedback"])
+        for message in messages:
+            content = message["content"]
+            role = message["role"]
+            feedback = message.get("feedback", {})
+            feedback_str = json.dumps(feedback, ensure_ascii=False, default=str) if feedback else ""
+            writer.writerow([role, content, feedback_str])
+            print(feedback_str)
+
+
+
 
 @app.route('/ask', methods=['POST'])
 def ask():
-    headers = {
-    'Authorization': f'Bearer {openai.api_key}',
-    'Content-Type': 'application/json',
-    }
     data = request.json
-    session_id = data.get('session_id')  # A unique session identifier from the client
+    session_id = data.get('session_id')
     user_message = data['message']
-    
-    # Retrieve the existing conversation history
+
     conversation_history = get_conversation_history(session_id)
+
+    conversation_history.append({"role": "user", "content": user_message})
+
+    # Assume chain.run() correctly handles updating its internal state with the conversation history
     
-    # If it's a new conversation, suggest a topic
-    conversation_history = suggest_topic_if_new_conversation(conversation_history)
-
-    # Add an instruction for the model to keep responses interactive
-    prompt_messages = create_prompt_with_instructions(conversation_history + [{"role": "user", "content": user_message}])
-
-    data = {
-        "model": "gpt-3.5-turbo",
-        "messages": prompt_messages,
-    }
-
-    response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
+    full_response = chain.run(user_message)
     
-    if response.status_code == 200:
-        response_data = response.json()
-        bot_message = response_data['choices'][0]['message']['content']
-        
-        # Update the conversation history with the latest exchange, including any system message
-        update_conversation_history(session_id, user_message, bot_message)
-        
-        return jsonify({'response': bot_message.strip()}), 200
-    else:
-        return jsonify({'error': 'Failed to fetch response from OpenAI'}), response.status_code
+    # You need to handle how you get feedback from chain_recorder or any other mechanism
+    feedback = chain_recorder.feedbacks  # Placeholder for where you would get feedback
+    conversation_history.append({"role": "assistant", "content": full_response, "feedback": feedback})
+    update_conversation_history(session_id, user_message, full_response)
+    record_conversation_and_feedback(conversation_history)
+    return jsonify({'response': full_response.strip()}), 200
 
 #generate image with words
 def query_image_generation(prompt, retry_limit=3, timeout=10):
