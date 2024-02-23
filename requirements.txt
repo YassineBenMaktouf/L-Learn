@@ -5,3 +5,4 @@ uuid
 PyJWT
 pymongo
 openai==1.12.0
+trulens_eval
