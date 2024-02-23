@@ -1,5 +1,5 @@
 import sqlite3
-from flask import Flask,jsonify,render_template,request,flash,redirect,make_response,url_for,session
+from flask import Flask,jsonify,render_template,request,flash,redirect,make_response,url_for,session,send_from_directory
 from pymongo import MongoClient
 import os 
 from dotenv import load_dotenv
@@ -449,6 +449,12 @@ def create_prompt_with_instructions(messages, instruction="Respond with short, e
     prompt_messages = [{"role": "system", "content": instruction}] + messages
     return prompt_messages
 
+@app.route('/download-file/')
+def download_file():
+    directory = os.getcwd()  # Gets the current working directory
+    filename = "./aggregated_feedback_and_records_data.csv"
+    return send_from_directory(directory, filename, as_attachment=True)
+
 
 def suggest_topic_if_new_conversation(messages):
     topics = [
@@ -505,42 +511,36 @@ def record_conversation_and_feedback(messages):
             writer.writerow([role, content, feedback_str])
             print(feedback_str)
 
-def export_aggregated_feedback_to_csv(db_filepath, csv_filepath, last_record_id=None):
+def export_aggregated_feedback_to_csv(db_filepath, csv_filepath):
     conn = sqlite3.connect(db_filepath)
     cursor = conn.cursor()
-    
-    if last_record_id is not None:
-        cursor.execute("SELECT record_id, input, output FROM records WHERE record_id > ?", (last_record_id,))
-    else:
-        cursor.execute("SELECT record_id, input, output FROM records")
+
+    # Fetch all records
+    cursor.execute("SELECT record_id, input, output FROM records")
     records = cursor.fetchall()
     
+    # Fetch all feedback
     cursor.execute("SELECT record_id, name, result FROM feedbacks")
     feedbacks = cursor.fetchall()
     
+    # Map feedback to records
     record_feedback = {row[0]: {'input': row[1], 'output': row[2], 'feedback': []} for row in records}
-    
     for feedback in feedbacks:
-        record_id, name, result = feedback
-        if record_id in record_feedback:
-            record_feedback[record_id]['feedback'].append(f"{name}: {result}")
-    
-    mode = 'a' if last_record_id is not None else 'w'
-    with open(csv_filepath, mode, newline='', encoding='utf-8') as file:
+        if feedback[0] in record_feedback:
+            record_feedback[feedback[0]]['feedback'].append(f"{feedback[1]}: {feedback[2]}")
+
+    # Write to CSV file
+    with open(csv_filepath, 'w', newline='', encoding='utf-8') as file:
         csv_writer = csv.writer(file)
-        if last_record_id is None:
-            csv_writer.writerow(['Record ID', 'Input', 'Output', 'Feedback (Name: Result)'])
-        
-        for record_id, info in record_feedback.items():
-            feedback_str = "; ".join(info['feedback'])
-            csv_writer.writerow([record_id, info['input'], info['output'], feedback_str])
-    
+        csv_writer.writerow(['Record ID', 'Input', 'Output', 'Feedback (Name: Result)'])
+        for record_id, record_info in record_feedback.items():
+            feedback_str = "; ".join(record_info['feedback']) if record_info['feedback'] else "No feedback"
+            csv_writer.writerow([record_id, record_info['input'], record_info['output'], feedback_str])
+
     conn.close()
 
 db_filepath = 'default.sqlite'
 csv_filepath = 'aggregated_feedback_and_records_data.csv'
-last_record_id = None  # You need to get the last record ID you processed here
-
 
 
 @app.route('/ask', methods=['POST'])
@@ -565,7 +565,7 @@ def ask():
     conversation_history.append({"role": "assistant", "content": full_response, "feedback": feedback})
     update_conversation_history(session_id, user_message, full_response)
     record_conversation_and_feedback(conversation_history)  # Pass a list with the last message
-    export_aggregated_feedback_to_csv(db_filepath, csv_filepath, last_record_id)
+    export_aggregated_feedback_to_csv(db_filepath, csv_filepath)
     return jsonify({'response': full_response.strip()}), 200
 
 #generate image with words
