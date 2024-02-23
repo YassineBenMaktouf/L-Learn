@@ -1,1 +1,7 @@
 Role,Content,Feedback
+user,hello,
+assistant,Hey there! How's it going?,
+user,how are you in arabic,
+assistant,"""كيف حالك؟"" How are you? Do you speak any other languages?",
+user,how are you in arabic,
+assistant,"""كيف حالك؟"" How are you? Do you speak any other languages?",

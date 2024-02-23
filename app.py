@@ -1,3 +1,4 @@
+import sqlite3
 from flask import Flask,jsonify,render_template,request,flash,redirect,make_response,url_for,session
 from pymongo import MongoClient
 import os 
@@ -464,7 +465,7 @@ def suggest_topic_if_new_conversation(messages):
         messages.insert(0, {"role": "system", "content": default_topic_instruction})
     return messages
 #######
-template = """You are a chatbot having a conversation with a human.
+template = """You are a chatbot having a conversation with a human.Respond with short, engaging messages. Ask questions or suggest topics to keep the conversation going.
         {chat_history}
         Human: {human_input}
         Chatbot:"""
@@ -476,13 +477,18 @@ llm = ChatOpenAI(model_name="gpt-3.5-turbo")
 chain = LLMChain(llm=llm, prompt=prompt_template, memory=memory, verbose=True)
 
 f_relevance = Feedback(topenai.relevance).on_input_output()
+f_qs_relevance = Feedback(topenai.qs_relevance).on_input_output()
 f_hate = Feedback(topenai.moderation_hate).on_output()
 f_violent = Feedback(topenai.moderation_violence, higher_is_better=False).on_output()
 f_selfharm = Feedback(topenai.moderation_selfharm, higher_is_better=False).on_output()
 f_maliciousness = Feedback(topenai.maliciousness_with_cot_reasons, higher_is_better=False).on_output()
+f_coherence = Feedback(topenai.coherence, higher_is_better=True).on_output()
+f_generate_score = Feedback(topenai.generate_score).on_output()
+f_helpfulness = Feedback(topenai.helpfulness,higher_is_better=True).on_output()
+f_moderation_harassment = Feedback(topenai.moderation_harassment,higher_is_better=False).on_output()
 
 chain_recorder = TruChain(
-    chain, app_id="GPT4-chatbot", feedbacks=[f_relevance,f_hate,f_violent,f_selfharm,f_maliciousness]
+    chain, app_id="LinguaSync-AI", feedbacks=[f_generate_score,f_relevance,f_qs_relevance,f_hate,f_violent,f_selfharm,f_maliciousness,f_coherence,f_helpfulness,f_moderation_harassment]
     )
 
 messages_test = []
@@ -499,19 +505,41 @@ def record_conversation_and_feedback(messages):
             writer.writerow([role, content, feedback_str])
             print(feedback_str)
 
-def record_conversation_and_feedback_test(messages_test):
-    filename = "conversation_eval.csv"
-    with open(filename, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.writer(file)
-        writer.writerow(["Role", "Content", "Feedback"])
-        for message in messages_test:
-            content = message["content"]
-            role = message["role"]
-            feedback = message.get("feedback", {})
-            # Serializing feedback to JSON string
-            feedback_str = json.dumps(feedback, ensure_ascii=False, default=str) if feedback else " "
-            writer.writerow([role, content, feedback_str])
+def export_aggregated_feedback_to_csv(db_filepath, csv_filepath, last_record_id=None):
+    conn = sqlite3.connect(db_filepath)
+    cursor = conn.cursor()
+    
+    if last_record_id is not None:
+        cursor.execute("SELECT record_id, input, output FROM records WHERE record_id > ?", (last_record_id,))
+    else:
+        cursor.execute("SELECT record_id, input, output FROM records")
+    records = cursor.fetchall()
+    
+    cursor.execute("SELECT record_id, name, result FROM feedbacks")
+    feedbacks = cursor.fetchall()
+    
+    record_feedback = {row[0]: {'input': row[1], 'output': row[2], 'feedback': []} for row in records}
+    
+    for feedback in feedbacks:
+        record_id, name, result = feedback
+        if record_id in record_feedback:
+            record_feedback[record_id]['feedback'].append(f"{name}: {result}")
+    
+    mode = 'a' if last_record_id is not None else 'w'
+    with open(csv_filepath, mode, newline='', encoding='utf-8') as file:
+        csv_writer = csv.writer(file)
+        if last_record_id is None:
+            csv_writer.writerow(['Record ID', 'Input', 'Output', 'Feedback (Name: Result)'])
+        
+        for record_id, info in record_feedback.items():
+            feedback_str = "; ".join(info['feedback'])
+            csv_writer.writerow([record_id, info['input'], info['output'], feedback_str])
+    
+    conn.close()
 
+db_filepath = 'default.sqlite'
+csv_filepath = 'aggregated_feedback_and_records_data.csv'
+last_record_id = None  # You need to get the last record ID you processed here
 
 
 
@@ -527,15 +555,17 @@ def ask():
     try:
         with chain_recorder as recording:
             full_response = chain.run(user_message)
-            feedback = recording.get_feedback()
+            feedback = {}
+            
     except AttributeError as e:
         print(f"Error retrieving feedback: {e}")
         feedback = {}  # Fallback to empty feedback if there's an issue
+    tru.get_records_and_feedback(app_ids=[])[0]
 
     conversation_history.append({"role": "assistant", "content": full_response, "feedback": feedback})
     update_conversation_history(session_id, user_message, full_response)
     record_conversation_and_feedback(conversation_history)  # Pass a list with the last message
-
+    export_aggregated_feedback_to_csv(db_filepath, csv_filepath, last_record_id)
     return jsonify({'response': full_response.strip()}), 200
 
 #generate image with words
