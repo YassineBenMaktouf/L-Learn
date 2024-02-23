@@ -48,7 +48,9 @@ HUGGINGFACE_API_KEY=your_huggingface_api_key_here
 
 ## Support
 
-Need help? For support, please open an issue on our [GitHub repository](https://github.com/YassineBenMaktouf/LinguaSync-AI/issues) or contact us via email.
+Need help? For support, please open an issue on our [GitHub repository](https://github.com/YassineBenMaktouf/LinguaSync-AI/issues) or contact us via email:
+- echomindsteam@gmail.com
+- benmaktoufyassine@gmail.com
 
 ## Contributions
 
