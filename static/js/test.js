@@ -146,10 +146,12 @@ async function submitTest() {
 
         const evaluationResultDiv = document.getElementById('evaluationResult');
         evaluationResultDiv.innerHTML = '';
-
-        responseData.evaluation_result.forEach(result => {
+        const evaluationResults = JSON.parse(responseData.evaluation_result);
+        evaluationResults.forEach(result => {
             const p = document.createElement('p');
-            const isCorrect = result.answer === result.user_answer;
+            
+            // Trim and compare answers in a case-insensitive manner
+            const isCorrect = result.answer.trim().toLowerCase() === result.user_answer.trim().toLowerCase();
 
             const icon = document.createElement('img');
             icon.src = isCorrect ? './static/img/checked.png' : './static/img/cancel.png';
@@ -163,7 +165,13 @@ async function submitTest() {
             p.appendChild(icon);
             p.appendChild(document.createTextNode(' '));
             p.appendChild(userAnswerSpan);
-            p.innerHTML += `<br>Question: ${result.question}<br>Correct Answer: ${result.answer}`;
+            // Use innerText to safely append text without interpreting it as HTML
+            p.appendChild(document.createElement('br'));
+            const questionText = document.createTextNode(`Question: ${result.question}`);
+            p.appendChild(questionText);
+            p.appendChild(document.createElement('br'));
+            const correctAnswerText = document.createTextNode(`Correct Answer: ${result.answer}`);
+            p.appendChild(correctAnswerText);
 
             evaluationResultDiv.appendChild(p);
         });
@@ -171,9 +179,6 @@ async function submitTest() {
         console.error('Error submitting test:', error);
     }
 }
-
-
-
 
 // Event listener for the "Supply me with a test" button
 const generateTestBtn = document.getElementById('generateTestBtn');

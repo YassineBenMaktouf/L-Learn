@@ -74,3 +74,15 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+.popup {
+    position: fixed;
+    top: 20%;
+    right: 10%;
+    transform: translate(-50%, -50%);
+    background-color: #013a0f; /* Green color */
+    color: #fff; /* White text */
+    padding: 10px 20px;
+    border-radius: 5px;
+    z-index: 9999; /* Ensure it appears on top of other elements */
+}

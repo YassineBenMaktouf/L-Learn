@@ -246,6 +246,11 @@ def profile():
 #generate sentence
 @app.route('/generate_sentence')
 def generate_sentence():
+    wanted_language = request.cookies.get('wanted_language')
+    if not wanted_language:
+        wanted_language = 'English'
+    system_language=f"RESPONDE IN {wanted_language} LANGUAGE ONLY AND KEEP THE SAME FORMAT."
+
     headers = {
         'Authorization': f'Bearer {openai.api_key}',
         'Content-Type': 'application/json',
@@ -253,6 +258,7 @@ def generate_sentence():
     data = {
         "model": "gpt-3.5-turbo",
         "messages": [
+            {"role": "system", "content": system_language},
             {"role": "system", "content": "Generate a random sentence with 6 to 8 words."},
             {"role": "user", "content": "Give me a random sentence that has between 6 to 8 words. DO NOT INCLUDE ANY OTHER TEXT, GIVE ME JUST THE SENTENCE."}
         ]
@@ -277,11 +283,53 @@ def generate_sentence():
 
 @app.route('/update_points', methods=['POST'])
 def update_points():
-    user_id = session.get('user_id')
+    user_id = request.cookies.get('user_id')
+
     if not user_id:
         return jsonify({'error': 'User not authenticated'}), 401
 
     user = User_collection.find_one({'user_id': user_id})
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+
+    # Get the user's current level
+    current_level = user.get('level')
+
+    # Increment the user's points in the User collection.
+    new_points = user.get('points', 0) + 1
+
+    # Check if the user should transition to the advanced level and reset points
+    if current_level == 'beginner' and new_points >= 50:
+        new_points = 0
+        # Logic to handle advanced level or difficulty increase.
+        User_collection.update_one({'user_id': user_id}, {'$set': {'level': 'advanced'}})
+
+    User_collection.update_one({'user_id': user_id}, {'$set': {'points': new_points}})
+
+    # Update points document or create a new one
+    points_document = Point_collection.find_one({'user_id': user_id})
+    if points_document:
+        Point_collection.update_one(
+            {'user_id': user_id},
+            {'$set': {'points': new_points, 'last_date': datetime.now()}}
+        )
+    else:
+        new_points_document = {
+            'user_id': user_id,
+            'points': new_points,
+            'last_date': datetime.now()
+        }
+        Point_collection.insert_one(new_points_document)
+
+    points_history_entry = PointsHistory(user_id=user_id, points_earned=1, date_earned=datetime.now())
+    PointsHistory_collection.insert_one(points_history_entry.__dict__)
+
+    return jsonify({'message': 'Points updated successfully', 'points': new_points})
+
+@app.route('/updatep/<user_id>', methods=['POST'])
+def update_points_with_user_id(user_id):
+    user = User_collection.find_one({'user_id': user_id})
+
     if not user:
         return jsonify({'error': 'User not found'}), 404
 
@@ -314,6 +362,7 @@ def update_points():
         User_collection.update_one({'user_id': user_id}, {'$set': {'level': 'advanced'}})
 
     return jsonify({'message': 'Points updated successfully', 'points': new_points})
+
 @app.route('/change_status', methods=['POST'])
 def change_status():
     if 'user_id' not in session:
@@ -332,14 +381,14 @@ def get_user(user_id):
     # Perform an aggregation to join the user data with their point history
     pipeline = [
         {"$match": {"user_id": user_id}},  # Match the user by user_id
-        {
-            "$lookup": {
-                "from": "points_history",  # The collection to join with
-                "localField": "user_id",  # Field from the "users" collection
-                "foreignField": "user_id",  # Field from the "points_history" collection
-                "as": "point_history"  # Alias for the joined documents
-            }
-        },
+         {
+        "$lookup": {
+            "from": "point_history",  # The collection to join with
+            "localField": "user_id",  # Field from the "users" collection
+            "foreignField": "user_id",  # Field from the "points_history" collection
+            "as": "point_history"  # Alias for the joined documents
+        }
+    },
         {
             "$lookup": {
                 "from": "points",  # The collection to join with
@@ -483,6 +532,10 @@ def query_image_generation(prompt, retry_limit=3, timeout=10):
 
 @app.route('/generate_image_with_random_word')
 def generate_image_with_random_word():
+    wanted_language = request.cookies.get('wanted_language')
+    if not wanted_language:
+        wanted_language = 'English'
+    system_language=f"RESPONDE IN {wanted_language} LANGUAGE ONLY AND KEEP THE SAME FORMAT."
     headers = {
         'Authorization': f'Bearer {openai.api_key}',
         'Content-Type': 'application/json',
@@ -490,6 +543,7 @@ def generate_image_with_random_word():
     data = {
         "model": "gpt-3.5-turbo",
         "messages": [
+            {"role": "system", "content": system_language},
             {"role": "system", "content": "Generate 4 random words that can be visually represented. DO NOT INCLUDE ANY ADDITIONAL CHARACTERS OR SYMBOLS. DO NOT ENUMERATE THE WORDS. MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'."}
         ]
     }
@@ -513,6 +567,10 @@ def generate_image_with_random_word():
 
 @app.route('/generate_words_for_tts')
 def generate_words_for_tts():
+    wanted_language = request.cookies.get('wanted_language')
+    if not wanted_language:
+        wanted_language = 'English'
+    system_language=f"RESPONDE IN {wanted_language} LANGUAGE ONLY AND KEEP THE SAME FORMAT."
     headers = {
         'Authorization': f'Bearer {openai.api_key}',
         'Content-Type': 'application/json',
@@ -520,7 +578,8 @@ def generate_words_for_tts():
     data = {
         "model": "gpt-3.5-turbo",
         "messages": [
-            {"role": "system", "content": "Generate 4 random words that are close in pronunciation but not too much in English. DO NOT INCLUDE ANY ADDITIONAL CHARACTERS OR SYMBOLS. DO NOT ENUMERATE THE WORDS. MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'."}
+            {"role": "system", "content": system_language},
+            {"role": "system", "content": "Generate 4 random words that are close in pronunciation but not too much. DO NOT INCLUDE ANY ADDITIONAL CHARACTERS OR SYMBOLS. DO NOT ENUMERATE THE WORDS. MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'."}
         ]
     }
     try:
@@ -537,6 +596,10 @@ def generate_words_for_tts():
     
 @app.route('/generate_paragraph_for_tts')
 def generate_paragraph_for_tts():
+    wanted_language = request.cookies.get('wanted_language')
+    if not wanted_language:
+        wanted_language = 'English'
+    system_language=f"RESPONDE IN {wanted_language} LANGUAGE ONLY AND KEEP THE SAME FORMAT."
     headers = {
         'Authorization': f'Bearer {openai.api_key}',
         'Content-Type': 'application/json',
@@ -544,6 +607,7 @@ def generate_paragraph_for_tts():
     data = {
         "model": "gpt-3.5-turbo",
         "messages": [
+            {"role": "system", "content": system_language},
             {"role": "system", "content": "Generate a random sentence suitable for language learning. The sentence should be easy to understand and pronounce for English speakers. DO NOT INCLUDE ANY ADDITIONAL CHARACTERS OR SYMBOLS like '.', ',', '?', etc."}
         ]
     }
@@ -565,10 +629,18 @@ def expand_on_topic():
         'Content-Type': 'application/json',
     }
     prompt = request.json.get('prompt')
+    wanted_language = request.cookies.get('wanted_language')
+    if not wanted_language:
+        wanted_language = 'English'
+    
+    level = request.cookies.get('level')
+    system_message = f"Given a topic provided by the user in {wanted_language}, with a language proficiency level of {level}, expand on it with insightful information."
+    system_message_2=f"RESPONDE IN {wanted_language} LANGUAGE ONLY AND KEEP THE SAME FORMAT."
     data = {
         "model": "gpt-3.5-turbo",
         "messages": [
-            {"role": "system", "content": "Expand on a Topic provided by the user."},
+            {"role": "system", "content": system_message},
+            {"role": "system", "content": system_message_2},
             {"role": "user", "content": prompt}
         ]
     }
@@ -587,10 +659,16 @@ def generate_multiple_choice_questions():
         'Authorization': f'Bearer {openai.api_key}',
         'Content-Type': 'application/json',
     }
+    wanted_language = request.cookies.get('wanted_language')
+    if not wanted_language:
+        wanted_language = 'English'
+    
     topic = request.json.get('topic')
+    system_language=f"RESPONDE IN {wanted_language} LANGUAGE ONLY AND KEEP THE SAME FORMAT."
     data = {
         "model": "gpt-3.5-turbo",
         "messages": [
+            {"role": "system", "content": system_language},
             {"role": "system", "content": f"Generate 4 multiple-choice questions based on the text: {topic}."}
         ]
     }
@@ -611,7 +689,12 @@ def generate_multiple_choice_questions():
         return jsonify({'error': str(e)}), 500
     
 def generate_prompt(selected_options):
-    prompt = "Given the provided questions, create a JSON object which enumerates a set of 4 child objects.Each child object has a property named 'question' and a property named 'answer' and a property named 'user_answer'.For each child object assign to the property named 'question' a questions provided and to the property named 'answer' the correct answer to the question to the property named 'answer_user' allovate the answer provided from the user .The resulting JSON object should be in this format: [{'question':'string','answer':'string'}].\n\n"
+    # yarja3 bel anglais
+    wanted_language = request.cookies.get('wanted_language')
+    if not wanted_language:
+        wanted_language = 'English'
+    prompt = f"Language: {wanted_language}\n\n"
+    prompt += "Given the provided questions, create a JSON object which enumerates a set of 4 child objects. Each child object has a property named 'question', a property named 'answer', and a property named 'user_answer'. For each child object, assign to the property named 'question' a question provided, to the property named 'answer' the correct answer to the question, and to the property named 'user_answer' allocate the answer provided from the user. The resulting JSON object should be in this format: [{'question':'string','answer':'string'}].\n\n"
     
     for idx, option in enumerate(selected_options, start=1):
         question = option['question']
@@ -630,6 +713,10 @@ def generate_prompt(selected_options):
 def submit_test():
     selected_options = request.json.get('selectedOptions', [])
     prompt = generate_prompt(selected_options)  
+    wanted_language = request.cookies.get('wanted_language')
+    if not wanted_language:
+        wanted_language = 'English'
+    system_language=f"RESPONDE IN {wanted_language} LANGUAGE ONLY AND KEEP THE SAME FORMAT."
     headers = {
         'Authorization': f'Bearer {openai.api_key}',
         'Content-Type': 'application/json',
@@ -637,6 +724,7 @@ def submit_test():
     data = {
         "model": "gpt-3.5-turbo",
         "messages": [
+            {"role": "system", "content": system_language},
             {"role": "system", "content": prompt}
         ]
     }
@@ -644,8 +732,8 @@ def submit_test():
         response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
         response.raise_for_status() 
         evaluation_result = response.json()['choices'][0]['message']['content'].strip()
-        evaluation_result_list = json.loads(evaluation_result.replace("'", '"'))
-        return jsonify({'message': 'Test submitted successfully', 'evaluation_result': evaluation_result_list}), 200
+        evaluation_result = evaluation_result.strip('```json').strip('```').strip()
+        return jsonify({'message': 'Test submitted successfully', 'evaluation_result': evaluation_result}), 200
     except Exception as e:
         logging.error(f'Error occurred: {e}')
         return jsonify({'error': str(e)}), 500
@@ -653,6 +741,9 @@ def submit_test():
 #describe image from url
 @app.route('/analyze-image-url', methods=['POST'])
 def analyze_image_url():
+    wanted_language = request.cookies.get('wanted_language')
+    if not wanted_language:
+        wanted_language = 'English'
     data = request.get_json()
     image_url = data.get('image_url')
     
@@ -669,7 +760,7 @@ def analyze_image_url():
             {
             "role": "user",
             "content": [
-                {"type": "text", "text": "Describe this image briefely."},
+                {"type": "text", "text": f"Describe this image briefely in {wanted_language} language."},
                 {
                 "type": "image_url",
                 "image_url": {

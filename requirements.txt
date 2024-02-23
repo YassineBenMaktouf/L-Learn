@@ -4,4 +4,4 @@ psycopg2-binary
 uuid
 PyJWT
 pymongo
-openai==0.28.0
+openai==1.12.0

@@ -32,7 +32,7 @@
                     </div>
                     <div class="h1 mb-3" >Your Current Level</div>
                    
-                      <div id="level" class="level bg-success text-white p-2 " style="margin-left: 60px; justify-content: center; border-radius: 50px;font-family: Arial, sans-serif;font-size: 20px; width: 100px; " >
+                      <div id="level" class="level bg-success text-white p-2 " style="margin-left: 60px; justify-content: center; border-radius: 50px;font-family: Arial, sans-serif;font-size: 20px; width: 105px; " >
                        
                       </div>
                   </div>
@@ -48,7 +48,6 @@
                     <div class="h3 mb-3" >Progress Throughout Time</div>
 
                     <div class="d-flex align-items-baseline">
-                      <canvas id="pointsChart" width="400" height="200"></canvas>
                     </div>
                   </div>
                   <div id="chart-revenue-bg" class="chart-sm"></div>
@@ -116,74 +115,103 @@
       
     </div>
 
-    <!-- Page body -->
     <script>
-        // Sample data for the chart
-        const pointsHistoryData = {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May'], // Sample months
-            datasets: [{
-                label: 'Points Earned',
-                data: [100, 200, 150, 300, 250], // Sample points earned
-                backgroundColor: 'rgba(54, 162, 235, 0.2)', // Background color
-                borderColor: 'rgba(54, 162, 235, 1)', // Border color
-                borderWidth: 1
-            }]
-        };
-
-        // Create the chart
-        const ctx = document.getElementById('pointsChart').getContext('2d');
-        const pointsChart = new Chart(ctx, {
-            type: 'line',
-            data: pointsHistoryData,
-            options: {
-                scales: {
-                    y: {
-                        beginAtZero: true
-                    }
-                }
-            }
-        });
-    </script>
-
-<script>
-    // @formatter:off
-    document.addEventListener("DOMContentLoaded", function () {
-        window.ApexCharts && (new ApexCharts(document.getElementById('sparkline-comments'), {
-            chart: {
-                type: "radialBar",
-                fontFamily: 'inherit',
-                height: 40,
-                width: 40,
-                animations: {
-                    enabled: false
-                },
-                sparkline: {
-                    enabled: true
-                },
-            },
-            tooltip: {
-                enabled: false,
-            },
-            plotOptions: {
-                radialBar: {
-                    hollow: {
-                        margin: 0,
-                        size: '75%'
-                    },
-                    track: {
-                        margin: 0
-                    },
-                    dataLabels: {
-                        show: false
-                    }
-                }
-            },
-            colors: [tabler.getColor("yellow")],
-            series: [56],
-        })).render();
-    });
-    // @formatter:on
+      // Fetch user data and update chart
+      fetch(`/api/users/${userId}`)
+          .then(response => {
+              if (!response.ok) {
+                  throw new Error('Network response was not ok');
+              }
+              return response.json();
+          })
+          .then(userData => {
+              // Extract point history data from userData
+              const labels = userData.point_history.map(item => item.date_earned.$date);
+              const points = userData.point_history.map(item => item.points_earned);
+              
+              // Update the chart with fetched data
+              updateChart(labels, points);
+          })
+          .catch(error => {
+              console.error('There was a problem with the fetch operation:', error);
+          });
+  
+      // Function to update the chart
+      function updateChart(labels, points) {
+          const pointsChart = document.getElementById('pointsChart').getContext('2d');
+          const chartData = {
+              labels: labels,
+              datasets: [{
+                  label: 'Points Earned',
+                  data: points,
+                  backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                  borderColor: 'rgba(54, 162, 235, 1)',
+                  borderWidth: 1
+              }]
+          };
+          const chartOptions = {
+              scales: {
+                  y: {
+                      beginAtZero: true
+                  }
+              }
+          };
+  
+          // Check if pointsChart already exists, if so, update it, otherwise create a new chart
+          if (window.pointsChart) {
+              window.pointsChart.data = chartData;
+              window.pointsChart.options = chartOptions;
+              window.pointsChart.update();
+          } else {
+              window.pointsChart = new Chart(pointsChart, {
+                  type: 'line',
+                  data: chartData,
+                  options: chartOptions
+              });
+          }
+      }
   </script>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  
+  <script>
+      // @formatter:off
+      document.addEventListener("DOMContentLoaded", function () {
+          window.ApexCharts && (new ApexCharts(document.getElementById('sparkline-comments'), {
+              chart: {
+                  type: "radialBar",
+                  fontFamily: 'inherit',
+                  height: 40,
+                  width: 40,
+                  animations: {
+                      enabled: false
+                  },
+                  sparkline: {
+                      enabled: true
+                  },
+              },
+              tooltip: {
+                  enabled: false,
+              },
+              plotOptions: {
+                  radialBar: {
+                      hollow: {
+                          margin: 0,
+                          size: '75%'
+                      },
+                      track: {
+                          margin: 0
+                      },
+                      dataLabels: {
+                          show: false
+                      }
+                  }
+              },
+              colors: [tabler.getColor("yellow")],
+              series: [56],
+          })).render();
+      });
+      // @formatter:on
+  </script>
+  
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 
 {% endblock %}

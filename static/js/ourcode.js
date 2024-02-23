@@ -86,7 +86,19 @@ function displayCorrectFeedback() {
     document.getElementById('nextSentence').style.display = 'inline-block';
     document.getElementById('checkSentence').style.display = 'none';
     updatePoints();
+
+    // Create a popup for correct feedback
+    const popup = document.createElement('div');
+    popup.classList.add('popup');
+    popup.textContent = 'Correct! Point added ';
+    document.body.appendChild(popup);
+
+    // Remove the popup after 2 seconds
+    setTimeout(() => {
+        popup.remove();
+    }, 2000);
 }
+
 
 function handleIncorrectAnswer() {
     const resultContainer = document.getElementById('resultContainer');
@@ -168,15 +180,22 @@ fetch(`/api/users/${userId}`)
 	})
 	.then(data => {
 	  // Handle the JSON response here
-      console.log(data)
       const userData = JSON.parse(data);
-      console.log()
       const username = userData.username;
       const selected_language=userData.wanted_language;
       const level = userData.level;
       const levels = document.querySelectorAll('.level');
       const point=userData.points[0].points
-      const completionRate = (point / 50) * 100; // Assuming 50 is the maximum points
+      const point_history=userData.point_history
+      console.log(point_history)
+      let maxPoints = 50; 
+
+     
+      if (level === 'advanced') {
+          maxPoints = 100; 
+      }
+
+      const completionRate = (point / maxPoints) * 100; // Assuming 50 is the maximum points
       const progressBar = document.getElementById('progress-bar');
             levels.forEach(levelElement => {
           levelElement.textContent = level;
@@ -204,14 +223,78 @@ fetch(`/api/users/${userId}`)
       progressBar.setAttribute('aria-valuenow', completionRate);
       progressBar.setAttribute('aria-label', `${completionRate}% Complete`);
       progressBar.querySelector('.visually-hidden').textContent = `${completionRate}% Complete`;
+      const labels = userData.point_history.map(item => item.date_earned.$date); // Assuming date_earned is in the correct format
+        const points = userData.point_history.map(item => item.points_earned);
+        updateChart(labels, points);
+        
 	})
+    .then(userData => {
+        const labels = userData.point_history.map(item => item.date_earned.$date);
+        const points = userData.point_history.map(item => item.points_earned);
+        updateChart(labels, points);
+    })
 	.catch(error => {
 	  console.error('There was a problem with the fetch operation:', error);
 	});
-    
-
-    
-    
+    function updateChart(labels, points) {
+        window.ApexCharts && (new ApexCharts(document.getElementById('chart-revenue-bg'), {
+            chart: {
+                type: "area",
+                fontFamily: 'inherit',
+                height: 40.0,
+                sparkline: {
+                    enabled: true
+                },
+                animations: {
+                    enabled: false
+                },
+            },
+            dataLabels: {
+                enabled: false,
+            },
+            fill: {
+                opacity: .16,
+                type: 'solid'
+            },
+            stroke: {
+                width: 2,
+                lineCap: "round",
+                curve: "smooth",
+            },
+            series: [{
+                name: "Points earned",
+                data: points
+            }],
+            tooltip: {
+                theme: 'dark'
+            },
+            grid: {
+                strokeDashArray: 4,
+            },
+            xaxis: {
+                labels: {
+                    padding: 0,
+                },
+                tooltip: {
+                    enabled: false
+                },
+                axisBorder: {
+                    show: false,
+                },
+                type: 'datetime',
+                categories: labels
+            },
+            yaxis: {
+                labels: {
+                    padding: 4
+                },
+            },
+            colors: [tabler.getColor("primary")],
+            legend: {
+                show: false,
+            },
+        })).render();
+    }
     function setSelectedLanguage(lang) {
         document.getElementById('selected_language').value = lang;
     }

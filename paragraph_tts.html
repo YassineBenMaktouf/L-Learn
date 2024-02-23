@@ -104,8 +104,8 @@ function generateParagraphForTTS() {
 function checkParagraph() {
     const generatedParagraph = document.getElementById('paragraphForTTS').innerText.toLowerCase();
     const userParagraph = document.getElementById('userParagraphInput').value.toLowerCase();
-    const normalizedGeneratedWords = generatedParagraph.replace(/[^a-z\s]/g, '').trim().split(/\s+/);
-    const normalizedUserWords = userParagraph.replace(/[^a-z\s]/g, '').trim().split(/\s+/);
+    const normalizedGeneratedWords = generatedParagraph.replace(/[^a-z\sáàâäãåæçéèêëíìîïðñóòôöõøùúûüýÿ]/g, '').trim().split(/\s+/);
+    const normalizedUserWords = userParagraph.replace(/[^a-z\sáàâäãåæçéèêëíìîïðñóòôöõøùúûüýÿ]/g, '').trim().split(/\s+/);
     const incorrectWords = normalizedUserWords.filter(word => !normalizedGeneratedWords.includes(word));
     const excessWords = normalizedUserWords.length > normalizedGeneratedWords.length;
     const insufficientWords = normalizedUserWords.length < normalizedGeneratedWords.length;

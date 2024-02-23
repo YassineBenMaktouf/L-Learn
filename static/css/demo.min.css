@@ -51,6 +51,8 @@
 
 .nav-item.active.col a:hover {
     background-color: rgba(255, 255, 255, 0.1); /* Light up the background color on hover */
+    padding-left: 15px;
+    padding-right: 15px;
 }
 .language-option:hover .flag {
     filter: brightness(150%); /* Increase brightness */
