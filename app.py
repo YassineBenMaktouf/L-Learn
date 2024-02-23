@@ -265,10 +265,10 @@ def generate_sentence():
         'Content-Type': 'application/json',
     }
     data = {
-        "model": "gpt-3.5-turbo",
+        "model": "gpt-4-turbo-preview",
         "messages": [
             {"role": "system", "content": system_language},
-            {"role": "system", "content": "Generate a random sentence with 6 to 8 words."},
+            {"role": "system", "content": "Generate a random sentence with 4 to 6 words."},
             {"role": "user", "content": "Give me a random sentence that has between 6 to 8 words. DO NOT INCLUDE ANY OTHER TEXT, GIVE ME JUST THE SENTENCE."}
         ]
     }
@@ -479,7 +479,7 @@ prompt_template = PromptTemplate(
     input_variables=["chat_history", "human_input"], template=template
     )
 memory = ConversationBufferMemory(memory_key="chat_history")
-llm = ChatOpenAI(model_name="gpt-3.5-turbo")
+llm = ChatOpenAI(model_name="gpt-4-turbo-preview")
 chain = LLMChain(llm=llm, prompt=prompt_template, memory=memory, verbose=True)
 
 f_relevance = Feedback(topenai.relevance).on_input_output()
@@ -602,7 +602,7 @@ def generate_image_with_random_word():
         'Content-Type': 'application/json',
     }
     data = {
-        "model": "gpt-3.5-turbo",
+        "model": "gpt-4-turbo-preview",
         "messages": [
             {"role": "system", "content": system_language},
             {"role": "system", "content": "Generate 4 random words that can be visually represented. DO NOT INCLUDE ANY ADDITIONAL CHARACTERS OR SYMBOLS. DO NOT ENUMERATE THE WORDS. MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'."}
@@ -637,7 +637,7 @@ def generate_words_for_tts():
         'Content-Type': 'application/json',
     }
     data = {
-        "model": "gpt-3.5-turbo",
+        "model": "gpt-4-turbo-preview",
         "messages": [
             {"role": "system", "content": system_language},
             {"role": "system", "content": "Generate 4 random words that are close in pronunciation but not too much. DO NOT INCLUDE ANY ADDITIONAL CHARACTERS OR SYMBOLS. DO NOT ENUMERATE THE WORDS. MAKE SURE TO ALWAYS GIVE THE WORDS IN THIS FORMAT: 'word1\nword2\nword3\nword4'."}
@@ -750,7 +750,6 @@ def generate_multiple_choice_questions():
         return jsonify({'error': str(e)}), 500
     
 def generate_prompt(selected_options):
-    # yarja3 bel anglais
     wanted_language = request.cookies.get('wanted_language')
     if not wanted_language:
         wanted_language = 'English'
@@ -783,7 +782,7 @@ def submit_test():
         'Content-Type': 'application/json',
     }
     data = {
-        "model": "gpt-3.5-turbo",
+        "model": "gpt-4-turbo-preview",
         "messages": [
             {"role": "system", "content": system_language},
             {"role": "system", "content": prompt}
