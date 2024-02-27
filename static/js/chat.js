@@ -12,8 +12,7 @@ let sessionID = uuidv4();
 async function sendMessage() {
     const inputField = document.getElementById('userInput');
     const userText = inputField.value;
-    inputField.value = ''; // Clear input field
-
+    inputField.value = '';
     displayMessage(userText, 'user');
 
     const response = await fetch('/ask', {
@@ -36,7 +35,6 @@ function displayMessage(message, sender) {
     chatbox.appendChild(msgDiv);
 }
 
-// Optionally, clear the chatbox on page load to visually reset the conversation
 window.onload = function() {
     document.getElementById('chatbox').innerHTML = '';
 };

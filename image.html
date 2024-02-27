@@ -32,14 +32,11 @@
     </div>
 </div>
 <script>
-// Function to generate image with random word
 let incorrectAttempts = 0;
 const maxIncorrectAttempts = 2;
 function generateImageWithRandomWord() {
-    incorrectAttempts = 0; // Reset incorrect attempts for the new image
-    // Indicate loading by disabling word buttons
-    disableWordButtons(true); // Initially disable buttons during fetch
-
+    incorrectAttempts = 0;
+    disableWordButtons(true); 
     fetch('/generate_image_with_random_word')
         .then(response => {
             if (!response.ok) {
@@ -49,17 +46,12 @@ function generateImageWithRandomWord() {
         })
         .then(data => {
             if (data && data.message === 'Image generated successfully') {
-                // Update buttons with words and enable them
                 updateButtons(data.words, data.correct_word);
-                
                 const img = document.createElement('img');
-                // Append a unique timestamp to bypass cache
                 img.src = './static/img/generated_image.png?' + new Date().getTime();
                 img.classList.add('img-fluid', 'w-100', 'rounded');
-                document.getElementById('image_div').innerHTML = ''; // Clear existing images
+                document.getElementById('image_div').innerHTML = ''; 
                 document.getElementById('image_div').appendChild(img);
-
-                // Hide the Next Image button until a correct answer is given
                 document.getElementById('nextImage').style.display = 'none';
             } else {
                 console.error('Failed to generate image');
@@ -73,22 +65,17 @@ function generateImageWithRandomWord() {
         });
 }
 
-// Adjusted updateButtons to include correct_word parameter
 function updateButtons(words, correctWord) {
     const buttonContainer = document.querySelector('.mt-4.mb-4.d-flex');
-    buttonContainer.innerHTML = ''; // Clear existing buttons
-
+    buttonContainer.innerHTML = ''; 
     words.forEach((word, index) => {
         const button = document.createElement('button');
         button.innerText = word;
-        button.id = 'word' + (index + 1); // Dynamically assign IDs
+        button.id = 'word' + (index + 1);
         button.classList.add('btn', 'btn-primary', 'btn-block', 'mr-2');
         button.style.margin = '3px';
-        button.disabled = false; // Enable button by default
-        
-        // Attach event listener to each button
+        button.disabled = false; 
         button.addEventListener('click', function() { checkAnswer(word, correctWord); });
-        
         buttonContainer.appendChild(button);
     });
 }
@@ -100,10 +87,9 @@ function checkAnswer(selectedWord, correctWord) {
         document.getElementById('feedback').classList.add('text-success');
         document.getElementById('feedback').classList.remove('text-danger');
         document.getElementById('nextImage').style.display = 'block';
-        disableWordButtons(true); // Disable all word buttons upon correct answer
+        disableWordButtons(true);
         updatePoints();
     } else {
-        // Incorrect answer logic
         handleIncorrectAnswerForWord(correctWord);
     }
 }
@@ -111,13 +97,11 @@ function checkAnswer(selectedWord, correctWord) {
 function handleIncorrectAnswerForWord(correctWord) {
     incorrectAttempts += 1;
     if (incorrectAttempts >= maxIncorrectAttempts) {
-        // Logic for revealing correct answer after max attempts
         document.getElementById('feedback').innerText = `Incorrect! The correct word was: ${correctWord}.`;
         document.getElementById('feedback').classList.add('text-danger');
         document.getElementById('nextImage').style.display = 'block';
         disableWordButtons(true);
     } else {
-        // Feedback for incorrect attempt
         document.getElementById('feedback').innerText = `Incorrect! Try again. Attempts left: ${maxIncorrectAttempts - incorrectAttempts}.`;
         document.getElementById('feedback').classList.add('text-danger');
     }
@@ -125,12 +109,12 @@ function handleIncorrectAnswerForWord(correctWord) {
 
 // Function to load the next image
 function nextImage() {
-    incorrectAttempts = 0; // Reset incorrect attempts for the next image
+    incorrectAttempts = 0;
     document.getElementById('nextImage').style.display = 'none';
     document.getElementById('image_div').innerHTML = '';
     document.getElementById('feedback').innerText = '';
     document.getElementById('feedback').classList.remove('text-success', 'text-danger');
-    resetButtonsToLoading(); // Reset buttons to "Loading.." and disable them
+    resetButtonsToLoading();
     generateImageWithRandomWord();
 }
 
@@ -145,12 +129,10 @@ function disableWordButtons(disable) {
 function resetButtonsToLoading() {
     const buttons = document.querySelectorAll('.btn.btn-primary');
     buttons.forEach(button => {
-        button.innerText = 'Loading..'; // Reset button text to "Loading.."
-        button.disabled = true; // Disable button
+        button.innerText = 'Loading..';
+        button.disabled = true;
     });
 }
-
-// Initial call to load the first image
 document.addEventListener('DOMContentLoaded', generateImageWithRandomWord);
 
 </script>

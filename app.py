@@ -269,7 +269,7 @@ def generate_sentence():
         "messages": [
             {"role": "system", "content": system_language},
             {"role": "system", "content": "Generate a random sentence with 4 to 6 words."},
-            {"role": "user", "content": "Give me a random sentence that has between 6 to 8 words. DO NOT INCLUDE ANY OTHER TEXT, GIVE ME JUST THE SENTENCE."}
+            {"role": "user", "content": "DO NOT INCLUDE ANY OTHER TEXT, GIVE ME JUST THE SENTENCE."}
         ]
     }
 
@@ -279,8 +279,8 @@ def generate_sentence():
             response_data = response.json()
             sentence = response_data['choices'][0]['message']['content'].strip()
             words = sentence.split()
-            if 6 <= len(words) <= 8:  # Ensure the sentence has between 6 to 8 words
-                random.shuffle(words)  # Shuffle the words to create the game challenge
+            if 4 <= len(words) <= 6:  
+                random.shuffle(words)
                 return jsonify({'original': sentence, 'shuffled': words}), 200
             else:
                 return jsonify({'error': 'Generated sentence does not meet the word count requirement.'}), 400
@@ -300,22 +300,12 @@ def update_points():
     user = User_collection.find_one({'user_id': user_id})
     if not user:
         return jsonify({'error': 'User not found'}), 404
-
-    # Get the user's current level
     current_level = user.get('level')
-
-    # Increment the user's points in the User collection.
     new_points = user.get('points', 0) + 1
-
-    # Check if the user should transition to the advanced level and reset points
     if current_level == 'beginner' and new_points >= 50:
         new_points = 0
-        # Logic to handle advanced level or difficulty increase.
         User_collection.update_one({'user_id': user_id}, {'$set': {'level': 'advanced'}})
-
     User_collection.update_one({'user_id': user_id}, {'$set': {'points': new_points}})
-
-    # Update points document or create a new one
     points_document = Point_collection.find_one({'user_id': user_id})
     if points_document:
         Point_collection.update_one(
@@ -329,47 +319,34 @@ def update_points():
             'last_date': datetime.now()
         }
         Point_collection.insert_one(new_points_document)
-
     points_history_entry = PointsHistory(user_id=user_id, points_earned=1, date_earned=datetime.now())
     PointsHistory_collection.insert_one(points_history_entry.__dict__)
-
     return jsonify({'message': 'Points updated successfully', 'points': new_points})
 
 @app.route('/updatep/<user_id>', methods=['POST'])
 def update_points_with_user_id(user_id):
     user = User_collection.find_one({'user_id': user_id})
-
     if not user:
         return jsonify({'error': 'User not found'}), 404
-
-    # Increment the user's points in the User collection.
     new_points = user.get('points', 0) + 1
     User_collection.update_one({'user_id': user_id}, {'$set': {'points': new_points}})
-
-    # Check if a points document already exists for this user.
     points_document = Point_collection.find_one({'user_id': user_id})
     if points_document:
-        # If it exists, update the points and last updated date.
         Point_collection.update_one(
             {'user_id': user_id},
             {'$set': {'points': new_points, 'last_date': datetime.now()}}
         )
     else:
-        # If no document exists, create a new one.
         new_points_document = {
             'user_id': user_id,
             'points': new_points,
             'last_date': datetime.now()
         }
         Point_collection.insert_one(new_points_document)
-
     points_history_entry = PointsHistory(user_id=user_id, points_earned=1, date_earned=datetime.now())
     PointsHistory_collection.insert_one(points_history_entry.__dict__)
- 
     if new_points >= 50:
-        # Logic to handle advanced level or difficulty increase.
         User_collection.update_one({'user_id': user_id}, {'$set': {'level': 'advanced'}})
-
     return jsonify({'message': 'Points updated successfully', 'points': new_points})
 
 @app.route('/change_status', methods=['POST'])
@@ -387,43 +364,31 @@ def change_status():
 
 @app.route('/api/users/<user_id>', methods=['GET'])
 def get_user(user_id):
-    # Perform an aggregation to join the user data with their point history
     pipeline = [
-        {"$match": {"user_id": user_id}},  # Match the user by user_id
+        {"$match": {"user_id": user_id}}, 
          {
         "$lookup": {
-            "from": "point_history",  # The collection to join with
-            "localField": "user_id",  # Field from the "users" collection
-            "foreignField": "user_id",  # Field from the "points_history" collection
-            "as": "point_history"  # Alias for the joined documents
+            "from": "point_history",
+            "localField": "user_id",
+            "foreignField": "user_id",
+            "as": "point_history"
         }
     },
         {
             "$lookup": {
-                "from": "points",  # The collection to join with
-                "localField": "user_id",  # Field from the "users" collection
-                "foreignField": "user_id",  # Field from the "points" collection
-                "as": "points"  # Alias for the joined documents
+                "from": "points",
+                "localField": "user_id",
+                "foreignField": "user_id",
+                "as": "points"
             }
         }
     ]
-
-    # Execute the aggregation pipeline
     user_data = list(User_collection.aggregate(pipeline))
-
-    # Check if the user exists
     if user_data:
-        # Extract level from the user data
         level = user_data[0].get('level', 'beginner')
-
-        # Convert the result to JSON
         user_json = dumps(user_data[0])
-
-        # Create response with user data
         response = make_response(jsonify(user_json))
-
-        # Set the level in a cookie
-        response.set_cookie('level', value=level, max_age=302460*60)  # Expires in 30 days
+        response.set_cookie('level', value=level, max_age=302460*60)  
 
         return response
     else:
@@ -431,11 +396,7 @@ def get_user(user_id):
     
 
 #chatbot code:
-# Initialize a simple in-memory structure to hold conversation histories
-# In a production environment, consider using a more persistent storage solution
 conversations = {}
-
-
 def get_conversation_history(session_id):
     return conversations.get(session_id, [])
 
@@ -451,10 +412,9 @@ def create_prompt_with_instructions(messages, instruction="Respond with short, e
 
 @app.route('/download-file/')
 def download_file():
-    directory = os.getcwd()  # Gets the current working directory
+    directory = os.getcwd()
     filename = "./aggregated_feedback_and_records_data.csv"
     return send_from_directory(directory, filename, as_attachment=True)
-
 
 def suggest_topic_if_new_conversation(messages):
     topics = [
@@ -466,11 +426,11 @@ def suggest_topic_if_new_conversation(messages):
         "What do you think about 'the role of social media in modern communication'?"
     ]
     
-    if not messages:  # If it's a new conversation
+    if not messages:
         default_topic_instruction = random.choice(topics)
         messages.insert(0, {"role": "system", "content": default_topic_instruction})
     return messages
-#######
+
 template = """You are a chatbot having a conversation with a human.Respond with short, engaging messages. Ask questions or suggest topics to keep the conversation going.
         {chat_history}
         Human: {human_input}
@@ -514,57 +474,43 @@ def record_conversation_and_feedback(messages):
 def export_aggregated_feedback_to_csv(db_filepath, csv_filepath):
     conn = sqlite3.connect(db_filepath)
     cursor = conn.cursor()
-
-    # Fetch all records
     cursor.execute("SELECT record_id, input, output FROM records")
     records = cursor.fetchall()
-    
-    # Fetch all feedback
     cursor.execute("SELECT record_id, name, result FROM feedbacks")
     feedbacks = cursor.fetchall()
-    
-    # Map feedback to records
     record_feedback = {row[0]: {'input': row[1], 'output': row[2], 'feedback': []} for row in records}
     for feedback in feedbacks:
         if feedback[0] in record_feedback:
             record_feedback[feedback[0]]['feedback'].append(f"{feedback[1]}: {feedback[2]}")
-
-    # Write to CSV file
     with open(csv_filepath, 'w', newline='', encoding='utf-8') as file:
         csv_writer = csv.writer(file)
         csv_writer.writerow(['Record ID', 'Input', 'Output', 'Feedback (Name: Result)'])
         for record_id, record_info in record_feedback.items():
             feedback_str = "; ".join(record_info['feedback']) if record_info['feedback'] else "No feedback"
             csv_writer.writerow([record_id, record_info['input'], record_info['output'], feedback_str])
-
     conn.close()
 
 db_filepath = 'default.sqlite'
 csv_filepath = 'aggregated_feedback_and_records_data.csv'
-
 
 @app.route('/ask', methods=['POST'])
 def ask():
     data = request.json
     session_id = data.get('session_id')
     user_message = data['message']
-
     conversation_history = get_conversation_history(session_id)
     conversation_history.append({"role": "user", "content": user_message})
-
     try:
         with chain_recorder as recording:
             full_response = chain.run(user_message)
             feedback = {}
-            
     except AttributeError as e:
         print(f"Error retrieving feedback: {e}")
-        feedback = {}  # Fallback to empty feedback if there's an issue
+        feedback = {}
     tru.get_records_and_feedback(app_ids=[])[0]
-
     conversation_history.append({"role": "assistant", "content": full_response, "feedback": feedback})
     update_conversation_history(session_id, user_message, full_response)
-    record_conversation_and_feedback(conversation_history)  # Pass a list with the last message
+    record_conversation_and_feedback(conversation_history)
     export_aggregated_feedback_to_csv(db_filepath, csv_filepath)
     return jsonify({'response': full_response.strip()}), 200
 
@@ -653,8 +599,6 @@ def generate_words_for_tts():
         logging.error(f'Error occurred: {e}')
         return jsonify({'error': str(e)}), 500
     
-
-    
 @app.route('/generate_paragraph_for_tts')
 def generate_paragraph_for_tts():
     wanted_language = request.cookies.get('wanted_language')
@@ -680,7 +624,6 @@ def generate_paragraph_for_tts():
     except Exception as e:
         logging.error(f'Error occurred: {e}')
         return jsonify({'error': str(e)}), 500
-    
 
 #for quiz "test"
 @app.route('/expand_on_topic', methods=['POST'])
@@ -735,16 +678,10 @@ def generate_multiple_choice_questions():
     }
     try:
         response = requests.post('https://api.openai.com/v1/chat/completions', headers=headers, json=data)
-        response.raise_for_status()  # Check for HTTP request errors
-        
-        # The response data should directly give you the text containing questions
-        questions_untreated = response.json()['choices'][0]['message']['content'].strip()
-        
-        # Since the questions are expected to be formatted as a single string with questions split by two newlines, we don't need further processing
-        questions = questions_untreated.split('\n\n')  # Splitting by two newlines to separate each question
-
+        response.raise_for_status() 
+        questions_untreated = response.json()['choices'][0]['message']['content'].strip()        
+        questions = questions_untreated.split('\n\n') 
         return jsonify({'questions': questions})
-
     except Exception as e:
         logging.error(f'Error occurred: {e}')
         return jsonify({'error': str(e)}), 500
@@ -755,12 +692,10 @@ def generate_prompt(selected_options):
         wanted_language = 'English'
     prompt = f"Language: {wanted_language}\n\n"
     prompt += "Given the provided questions, create a JSON object which enumerates a set of 4 child objects. Each child object has a property named 'question', a property named 'answer', and a property named 'user_answer'. For each child object, assign to the property named 'question' a question provided, to the property named 'answer' the correct answer to the question, and to the property named 'user_answer' allocate the answer provided from the user. The resulting JSON object should be in this format: [{'question':'string','answer':'string'}].\n\n"
-    
     for idx, option in enumerate(selected_options, start=1):
         question = option['question']
         selected_option_index = option['selectedOptionIndex']
         options = option['options']
-        
         prompt += f"{idx}. {question}\n"
         for i, opt in enumerate(options):
             if i == selected_option_index:
@@ -806,10 +741,8 @@ def analyze_image_url():
         wanted_language = 'English'
     data = request.get_json()
     image_url = data.get('image_url')
-    
     if not image_url:
         return jsonify({'error': 'No image URL provided'}), 400
-
     headers = {
         'Authorization': f'Bearer {openai.api_key}',
         'Content-Type': 'application/json',
